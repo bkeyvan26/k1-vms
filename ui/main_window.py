@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""K1 VMS — Main Window (Phase 6.6: global loading overlay)"""
+"""K1 VMS — Main Window (Phase 12: notifier + settings)"""
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QStackedWidget,
     QFrame, QLabel, QMessageBox, QApplication, QLineEdit, QTextEdit,
@@ -20,14 +20,17 @@ from ui.pages.playback_page import PlaybackPage
 from ui.pages.live_page import LivePage
 from ui.pages.placeholders import (
     AlarmsPage, AIPage, SearchPage,
-    MapPage, ReportsPage, SettingsPage, UsersPage
+    MapPage, ReportsPage, UsersPage
 )
+from ui.pages.settings_page import SettingsPage
 from ui.loading_overlay import GlobalLoadingOverlay
 from ui.activity_bus import ActivityBus
 from ui.loading_texts import t as t_load
 from core.camera_manager import CameraManager
 from core.nvr_engine import NVREngine
 from core import settings_manager
+from core.i18n import t, set_language, get_language
+import config
 
 
 class KeyboardFilter(QObject):
@@ -54,7 +57,13 @@ class KeyboardFilter(QObject):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("K1 VMS")
+
+        try:
+            set_language(getattr(config, "LANGUAGE", "fa"))
+        except Exception:
+            pass
+
+        self.setWindowTitle(t("app.title"))
         self.setMinimumSize(1280, 720)
         self.resize(1440, 860)
         self.setStyleSheet(f"background: {theme.COLOR_BG_APP};")
@@ -68,14 +77,17 @@ class MainWindow(QMainWindow):
         self._setup_ui()
         self._setup_shortcuts()
         self._start_nvr()
+        self._start_storage_cleanup()
         self._refresh_header()
 
-        # ★ Global loading overlay
         self._loading_overlay = GlobalLoadingOverlay(self)
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._on_tick)
         self._timer.start(2000)
+
+        # ★ اعلان شروع برنامه
+        QTimer.singleShot(1500, self._notify_startup)
 
     # ============================================================
     def _setup_ui(self):
@@ -103,13 +115,14 @@ class MainWindow(QMainWindow):
         body.addWidget(self.workspace, 1)
         root.addLayout(body, 1)
 
-        status = QFrame(); status.setFixedHeight(24)
+        status = QFrame()
+        status.setFixedHeight(24)
         status.setStyleSheet(f"""
             background: {theme.COLOR_BG_SHELL};
             border-top: 1px solid {theme.COLOR_BORDER};
         """)
         sb = QHBoxLayout(status); sb.setContentsMargins(12, 0, 12, 0)
-        self.status_lbl = QLabel("Ready")
+        self.status_lbl = QLabel(t("main.ready"))
         self.status_lbl.setStyleSheet(
             f"color: {theme.COLOR_TEXT_SECONDARY}; font-size: 11px;")
         sb.addWidget(self.status_lbl); sb.addStretch(1)
@@ -143,7 +156,7 @@ class MainWindow(QMainWindow):
     def _empty_panel(self, title):
         w = QWidget(); v = QVBoxLayout(w)
         v.setContentsMargins(16, 16, 16, 16)
-        l = QLabel(f"No options for {title}")
+        l = QLabel(t("main.panel.no_options", title=title))
         l.setStyleSheet(f"color: {theme.COLOR_TEXT_MUTED}; font-size: 12px;")
         l.setAlignment(Qt.AlignCenter)
         v.addWidget(l); v.addStretch(1)
@@ -179,6 +192,28 @@ class MainWindow(QMainWindow):
         except Exception as e:
             print(f"[NVR] exception: {e}")
 
+    def _start_storage_cleanup(self):
+        try:
+            from core.storage_manager import StorageManager
+            sm = StorageManager.instance()
+            sm.start_auto_cleanup(self.settings, interval_sec=3600)
+        except Exception as e:
+            print(f"[main] storage cleanup start failed: {e}")
+
+    def _notify_startup(self):
+        """اعلان شروع برنامه به همه کانال‌های فعال."""
+        try:
+            if "system_start" not in getattr(self.settings, "notify_events", []):
+                return
+            from core.notifier import Notifier
+            Notifier.instance().notify(
+                self.settings, "system_start",
+                "K1 VMS راه‌اندازی شد",
+                f"برنامه در {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')} شروع شد.",
+                rate_limit_key="startup")
+        except Exception as e:
+            print(f"[main] startup notify error: {e}")
+
     def _on_tick(self):
         if self._shutting_down:
             return
@@ -195,7 +230,6 @@ class MainWindow(QMainWindow):
         cams = self.cam_manager.all()
         total = len(cams)
         enabled = sum(1 for c in cams if c.enabled)
-
         self.header.set_online(enabled, total)
 
         rec_count = 0
@@ -204,7 +238,6 @@ class MainWindow(QMainWindow):
             rec_count = self.nvr.get_recording_count()
             err_count = self.nvr.get_error_count()
         self.header.set_recording(rec_count, enabled)
-
         self.header.set_alarms(err_count)
 
         ai_status = "disabled"
@@ -229,7 +262,6 @@ class MainWindow(QMainWindow):
         if cur is self._pages[key]:
             return
 
-        # ★ Loading feedback for page switch (only if takes >250ms)
         page = self._pages[key]
         try:
             ActivityBus.instance().show(t_load(
@@ -238,10 +270,8 @@ class MainWindow(QMainWindow):
             pass
 
         if hasattr(cur, "on_hide"):
-            try:
-                cur.on_hide()
-            except Exception as e:
-                print(f"[page hide] {e}")
+            try: cur.on_hide()
+            except Exception as e: print(f"[page hide] {e}")
 
         self.workspace.setCurrentWidget(page)
         self.rail.set_active_page(key)
@@ -254,19 +284,14 @@ class MainWindow(QMainWindow):
 
         self.status_lbl.setText(page.PAGE_TITLE)
         if hasattr(page, "on_show"):
-            try:
-                page.on_show()
-            except Exception as e:
-                print(f"[page show] {e}")
+            try: page.on_show()
+            except Exception as e: print(f"[page show] {e}")
 
-        # Hide loading after a short delay
         QTimer.singleShot(250, self._hide_activity_after_switch)
 
     def _hide_activity_after_switch(self):
-        try:
-            ActivityBus.instance().hide()
-        except Exception:
-            pass
+        try: ActivityBus.instance().hide()
+        except Exception: pass
 
     # ============================================================
     def _open_command_bar(self):
@@ -278,8 +303,8 @@ class MainWindow(QMainWindow):
         cb.exec()
 
     def _show_user_menu(self):
-        QMessageBox.information(self, "User",
-            "User management coming in Phase 7.")
+        QMessageBox.information(self, t("main.user_dialog.title"),
+                                t("main.user_dialog.msg"))
 
     def _toggle_fullscreen(self):
         if self.isFullScreen(): self.showNormal()
@@ -293,27 +318,35 @@ class MainWindow(QMainWindow):
         self._shutting_down = True
 
         print("[shutdown] stopping pages…")
+        try: self._timer.stop()
+        except Exception: pass
+
+        # ★ اعلان بسته شدن
+        try:
+            if "system_stop" in getattr(self.settings, "notify_events", []):
+                from core.notifier import Notifier
+                Notifier.instance().notify(
+                    self.settings, "system_stop",
+                    "K1 VMS در حال بسته شدن",
+                    f"برنامه در {datetime.datetime.now().strftime('%H:%M:%S')} بسته شد.",
+                    rate_limit_key="shutdown")
+        except Exception as e:
+            print(f"[main] shutdown notify error: {e}")
 
         try:
-            self._timer.stop()
-        except Exception:
-            pass
+            from core.storage_manager import StorageManager
+            StorageManager.instance().stop_auto_cleanup()
+        except Exception: pass
 
-        try:
-            ActivityBus.instance().show(t_load("shutdown"))
-        except Exception:
-            pass
+        try: ActivityBus.instance().show(t_load("shutdown"))
+        except Exception: pass
 
         for key, page in self._pages.items():
             try:
-                if hasattr(page, "shutdown"):
-                    page.shutdown()
-                elif hasattr(page, "on_hide"):
-                    page.on_hide()
-            except Exception as e:
-                print(f"[shutdown] {key}: {e}")
+                if hasattr(page, "shutdown"): page.shutdown()
+                elif hasattr(page, "on_hide"): page.on_hide()
+            except Exception as e: print(f"[shutdown] {key}: {e}")
 
         QApplication.processEvents()
-
         print("[shutdown] done — MediaMTX left running (detached)")
         super().closeEvent(event)

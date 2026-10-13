@@ -9,6 +9,7 @@ from PySide6.QtGui import (
     QImage, QPainter, QColor, QFont, QPen, QDrag, QPixmap, QPolygon
 )
 from ui import theme
+from core.i18n import t
 
 
 MIME_CAMERA = "application/x-k1vms-camera"
@@ -320,11 +321,14 @@ class LiveCell(QFrame):
         return QRect(self.width() - r * 2 - 6, 6, r * 2, r * 2)
 
     def _reconnect_rect(self):
-        w = 116
-        h = 28
-        cx = self.width() // 2
-        cy = self.height() // 2 + 34
-        return QRect(cx - w // 2, cy - h // 2, w, h)
+        """اندازه دکمه اتصال مجدد، متناسب با اندازه کاشی."""
+        w, h = self.width(), self.height()
+        # کوچک‌تر از قبل — متناسب با کاشی
+        btn_w = max(70, min(140, int(w * 0.42)))
+        btn_h = max(22, min(34, int(h * 0.11)))
+        cx = w // 2
+        cy = h // 2 + max(18, int(h * 0.14))
+        return QRect(cx - btn_w // 2, cy - btn_h // 2, btn_w, btn_h)
 
     def enterEvent(self, e):
         self.hover_entered.emit(self.idx)
@@ -428,37 +432,54 @@ class LiveCell(QFrame):
         e.accept()
 
     def dragEnterEvent(self, e):
-        md = e.mimeData()
-        if md.hasFormat(MIME_CAMERA) or md.hasText():
-            e.acceptProposedAction()
+        # ★ پذیرش هر چیزی — اعتبارسنجی در dropEvent
+        e.acceptProposedAction()
 
     def dragMoveEvent(self, e):
-        md = e.mimeData()
-        if md.hasFormat(MIME_CAMERA) or md.hasText():
-            e.acceptProposedAction()
+        e.acceptProposedAction()
 
     def dropEvent(self, e):
         md = e.mimeData()
         print(f"[LiveCell.drop] idx={self.idx} "
               f"has_mime={md.hasFormat(MIME_CAMERA)} "
               f"has_text={md.hasText()}")
+        uid = ""
+        src = -1
+
+        # ★ مسیر ۱: MIME_CAMERA
         if md.hasFormat(MIME_CAMERA):
             try:
                 raw = bytes(md.data(MIME_CAMERA)).decode("utf-8")
                 print(f"[LiveCell.drop] raw={raw!r}")
                 data = json.loads(raw)
                 uid = (data.get("uid") or "").strip()
-                src = int(data.get("from_cell", -1))
-                if src >= 0 and src != self.idx:
-                    self.swap_cells.emit(src, self.idx)
-                elif uid:
-                    self.drop_camera.emit(self.idx, uid)
+                try:
+                    src = int(data.get("from_cell", -1))
+                except (ValueError, TypeError):
+                    src = -1
             except Exception as ex:
-                print(f"[LiveCell.drop] exception: {ex}")
-        elif md.hasText():
+                print(f"[LiveCell.drop] MIME parse exception: {ex}")
+
+        # ★ مسیر ۲: fallback روی text
+        if not uid and md.hasText():
             uid = md.text().strip()
-            if uid:
-                self.drop_camera.emit(self.idx, uid)
+            print(f"[LiveCell.drop] fallback text={uid!r}")
+
+        if not uid:
+            print(f"[LiveCell.drop] no uid — ignoring")
+            e.ignore()
+            return
+
+        # ★ سواپ کاشی به کاشی
+        if src >= 0 and src != self.idx:
+            print(f"[LiveCell.drop] swap {src} <-> {self.idx}")
+            self.swap_cells.emit(src, self.idx)
+            e.acceptProposedAction()
+            return
+
+        # ★ drop معمولی (دوربین / NVR / گروه)
+        print(f"[LiveCell.drop] emit drop_camera idx={self.idx} uid={uid!r}")
+        self.drop_camera.emit(self.idx, uid)
         e.acceptProposedAction()
 
     def _draw_loading(self, p: QPainter):
@@ -496,36 +517,38 @@ class LiveCell(QFrame):
             p.setPen(_SP_TEXT)
             p.drawText(QRect(0, text_y, w, 18),
                        Qt.AlignHCenter | Qt.AlignTop, status[:32])
-
         p.setRenderHint(QPainter.Antialiasing, False)
 
     def _draw_reconnect_button(self, p: QPainter):
-        rect = self._reconnect_rect()
-        if self.width() < 130 or self.height() < 100:
+        w, h = self.width(), self.height()
+        # ★ حداقل اندازه لازم برای نمایش دکمه
+        if w < 110 or h < 90:
             return
 
+        rect = self._reconnect_rect()
         p.setRenderHint(QPainter.Antialiasing, True)
 
         bg = _RC_BG_HOVER if self._rc_hover else _RC_BG
         border = _RC_BORDER_HOVER if self._rc_hover else _RC_BORDER
-
+        radius = max(6, rect.height() // 2)
         p.setBrush(bg)
-        p.setPen(QPen(border, 1.5))
-        p.drawRoundedRect(rect, 14, 14)
+        p.setPen(QPen(border, 1.2))
+        p.drawRoundedRect(rect, radius, radius)
 
-        icon_cx = rect.left() + 15
+        # آیکن چرخ (کوچک، متناسب)
+        icon_r = max(5, min(7, rect.height() // 4))
+        icon_cx = rect.left() + rect.height() // 2 + 2
         icon_cy = rect.center().y()
-        r = 6
 
         p.setBrush(Qt.NoBrush)
-        p.setPen(QPen(QColor(255, 255, 255), 1.8,
+        p.setPen(QPen(QColor(255, 255, 255), 1.5,
                       Qt.SolidLine, Qt.RoundCap))
-        p.drawArc(icon_cx - r, icon_cy - r, r * 2, r * 2,
-                  60 * 16, 260 * 16)
+        p.drawArc(icon_cx - icon_r, icon_cy - icon_r,
+                  icon_r * 2, icon_r * 2, 60 * 16, 260 * 16)
 
         end_rad = math.radians(60)
-        ax = icon_cx + r * math.cos(end_rad)
-        ay = icon_cy + r * math.sin(end_rad)
+        ax = icon_cx + icon_r * math.cos(end_rad)
+        ay = icon_cy + icon_r * math.sin(end_rad)
         p.setPen(Qt.NoPen)
         p.setBrush(QColor(255, 255, 255))
         arrow = QPolygon([
@@ -535,12 +558,21 @@ class LiveCell(QFrame):
         ])
         p.drawPolygon(arrow)
 
+        # متن دکمه (فونت متناسب با اندازه دکمه)
+        font_size = max(8, min(10, rect.height() // 3))
+        f = QFont("Tahoma", font_size)
+        f.setBold(True)
+        p.setFont(f)
         p.setPen(_RC_TEXT)
-        p.setFont(_RC_FONT)
-        text_rect = QRect(rect.left() + 28, rect.top(),
-                          rect.width() - 32, rect.height())
-        p.drawText(text_rect, Qt.AlignVCenter | Qt.AlignLeft,
-                   "اتصال مجدد")
+
+        text_rect = QRect(
+            rect.left() + rect.height() + 2,
+            rect.top(),
+            rect.width() - rect.height() - 6,
+            rect.height()
+        )
+        p.drawText(text_rect, Qt.AlignVCenter | Qt.AlignCenter,
+                   t("live.cell.reconnect"))
 
         p.setRenderHint(QPainter.Antialiasing, False)
 
@@ -551,29 +583,35 @@ class LiveCell(QFrame):
 
             if self._is_offline and self._uid and self._frame is None:
                 p.fillRect(self.rect(), QColor(18, 22, 28))
-                cx = self.width() // 2
-                cy = self.height() // 2 - 30
-                if self.width() > 80 and self.height() > 80:
+                w, h = self.width(), self.height()
+                cx = w // 2
+                # ★ اندازه متناسب با کاشی
+                icon_r = max(10, min(22, min(w, h) // 7))
+                cy = h // 2 - max(18, icon_r + 8)
+
+                if w > 70 and h > 70:
                     p.setRenderHint(QPainter.Antialiasing, True)
-                    p.setPen(QPen(QColor(120, 60, 60), 3))
+                    p.setPen(QPen(QColor(120, 60, 60), max(1, icon_r // 8)))
                     p.setBrush(QColor(60, 30, 35, 200))
-                    p.drawEllipse(QPoint(cx, cy), 22, 22)
-                    p.setPen(QPen(QColor(230, 100, 100), 2.5))
-                    m = 8
+                    p.drawEllipse(QPoint(cx, cy), icon_r, icon_r)
+                    p.setPen(QPen(QColor(230, 100, 100),
+                                  max(1.5, icon_r / 5)))
+                    m = int(icon_r * 0.42)
                     p.drawLine(cx - m, cy - m, cx + m, cy + m)
                     p.drawLine(cx + m, cy - m, cx - m, cy + m)
                     p.setRenderHint(QPainter.Antialiasing, False)
 
-                    p.setPen(QColor(235, 130, 130))
-                    offline_font = QFont("Tahoma", 10)
+                    font_size = max(8, min(12, icon_r // 2 + 2))
+                    offline_font = QFont("Tahoma", font_size)
                     offline_font.setBold(True)
                     p.setFont(offline_font)
-                    p.drawText(QRect(0, cy + 30, self.width(), 22),
+                    p.setPen(QColor(235, 130, 130))
+                    text_y = cy + icon_r + 4
+                    p.drawText(QRect(0, text_y, w, font_size + 8),
                                Qt.AlignHCenter | Qt.AlignTop,
-                               "آفلاین")
-
+                               t("live.cell.offline"))
                 self._draw_reconnect_button(p)
-
+                
                 bh = 18
                 p.fillRect(QRect(0, self.height() - bh,
                                  self.width(), bh),
@@ -598,8 +636,8 @@ class LiveCell(QFrame):
                         p.drawRect(self.rect().adjusted(6, 6, -7, -7))
                         p.setPen(QColor("#4a5560"))
                         p.drawText(self.rect(), Qt.AlignCenter,
-                                   "Drop camera")
-                    return
+                                   t("live.cell.drop_camera"))
+                        return
                 self._draw_loading(p)
                 return
 
@@ -696,6 +734,7 @@ class LiveGrid(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setStyleSheet("background: #000;")
+        self.setAcceptDrops(True)   # ★ جدید — drop روی کادر خالی هم کار کنه
         self._grid = QGridLayout(self)
         self._grid.setSpacing(3)
         self._grid.setContentsMargins(3, 3, 3, 3)
@@ -838,10 +877,64 @@ class LiveGrid(QWidget):
         self._update_active()
         self.cell_clicked.emit(idx)
 
+    # ============================================================
+    # Grid-level drop forwarding
+    # ============================================================
+    def _nearest_cell(self, pos):
+        """نزدیک‌ترین کاشی به نقطه‌ی داده‌شده."""
+        target = None
+        min_dist = None
+        for cell in self._cells:
+            if not cell.isVisible():
+                continue
+            try:
+                cell_pos = cell.mapTo(self, QPoint(0, 0))
+                cx = cell_pos.x() + cell.width() // 2
+                cy = cell_pos.y() + cell.height() // 2
+                dist = (pos.x() - cx) ** 2 + (pos.y() - cy) ** 2
+                if min_dist is None or dist < min_dist:
+                    min_dist = dist
+                    target = cell
+            except Exception:
+                continue
+        return target
+
+    def dragEnterEvent(self, e):
+        """پذیرش drop روی کل گرید."""
+        md = e.mimeData()
+        if md.hasFormat(MIME_CAMERA) or md.hasText():
+            e.acceptProposedAction()
+        else:
+            e.ignore()
+
+    def dragMoveEvent(self, e):
+        md = e.mimeData()
+        if md.hasFormat(MIME_CAMERA) or md.hasText():
+            e.acceptProposedAction()
+        else:
+            e.ignore()
+
+    def dropEvent(self, e):
+        """اگر روی کاشی نبود، به نزدیک‌ترین کاشی forward کن."""
+        pos = e.position().toPoint()
+        print(f"[LiveGrid.drop] at ({pos.x()},{pos.y()})")
+
+        # اگر روی کاشی خالی نیست و بین کاشی‌هاست، نزدیک‌ترین رو بگیر
+        target = self._nearest_cell(pos)
+        if target is None:
+            # اگر حتی یک کاشی هم نیست، active_idx رو استفاده کن
+            if self._cells:
+                target = self._cells[self._active_idx]
+            else:
+                e.ignore()
+                return
+
+        print(f"[LiveGrid.drop] forwarding to cell idx={target.idx}")
+        target.dropEvent(e)
+
     def set_frame(self, idx, payload):
         if 0 <= idx < len(self._cells):
             self._cells[idx].set_frame(payload)
-
     def clear_cell(self, idx):
         if 0 <= idx < len(self._cells):
             self._cells[idx].clear()

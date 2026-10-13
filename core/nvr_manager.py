@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""K1 VMS — NVR Manager
-
-Phase 8.2:
-  - sync_folder_names: نام پوشه NVR را به همه‌ی کانال‌های موجود منتقل می‌کند
-"""
+"""K1 VMS — NVR Manager (Phase 10.4: simplified + folder sync only)"""
 import json
 import re
 import threading
@@ -35,8 +31,6 @@ class NVRManager:
         self._nvrs: List[NVRDevice] = []
         self._load()
 
-    # ============================================================
-    # IO
     # ============================================================
     def _load(self):
         if not NVR_FILE.exists():
@@ -101,15 +95,9 @@ class NVRManager:
         return None
 
     # ============================================================
-    # ★ sync_folder_names — نام پوشه NVR → کانال‌ها
+    # sync_folder_names
     # ============================================================
     def sync_folder_names(self, camera_manager) -> int:
-        """
-        نام پوشه‌ی ضبط هر NVR را به همه‌ی کانال‌های آن NVR منتقل می‌کند.
-        این برای دوربین‌هایی است که قبل از افزودن فیلد record_folder_name
-        ساخته شده‌اند و مقدارشان خالی است.
-        برمی‌گرداند تعداد دوربین‌های به‌روزرسانی‌شده.
-        """
         updated = 0
         for nvr in self._nvrs:
             folder = (nvr.record_folder_name or "").strip()
@@ -125,8 +113,8 @@ class NVRManager:
                         camera_manager.update(cam.uid, cam)
                         updated += 1
                     except Exception as e:
-                        print(f"[NVRManager] sync update failed for "
-                              f"{cam.name}: {e}")
+                        print(f"[NVRManager] sync folder failed "
+                              f"for {cam.name}: {e}")
         if updated:
             print(f"[NVRManager] ✓ synced folder_name for "
                   f"{updated} camera(s)")
@@ -176,35 +164,39 @@ class NVRManager:
 
         cam.recording_profile_id = "nvr_main"
         cam.live_profile_id = "nvr_main"
-        cam.record_enabled_continuous = True
-        cam.record_enabled_motion = False
-
+        # ★ مقدار اولیه = مقدار فعلی NVR
+        record = bool(getattr(nvr, "record_channels", False))
+        cam.record_enabled_continuous = record
+        cam.record_enabled_motion = record
         return cam
 
     # ============================================================
-    # افزودن کانال‌ها با جلوگیری از تکرار
+    # add_channels_as_cameras — فقط افزودن + sync نام پوشه
+    # (ضبط در cameras_page.py مدیریت می‌شود)
     # ============================================================
     def add_channels_as_cameras(self, nvr: NVRDevice, camera_manager,
                                 only_enabled: bool = True) -> int:
         added = 0
         skipped = 0
+        new_folder = (nvr.record_folder_name or "").strip()
 
         for ch in nvr.channels:
-            if only_enabled and not ch.enabled:
-                continue
-
             existing = camera_manager.find_by_nvr_channel(
                 nvr.uid, ch.channel_id)
+
             if existing is not None:
-                # اگر نام پوشه NVR عوض شده، به کانال موجود هم منتقل کن
-                new_folder = (nvr.record_folder_name or "").strip()
-                if new_folder and getattr(existing, "record_folder_name", "") != new_folder:
+                # فقط folder name sync
+                if new_folder and getattr(
+                        existing, "record_folder_name", "") != new_folder:
                     existing.record_folder_name = new_folder
                     try:
                         camera_manager.update(existing.uid, existing)
                     except Exception:
                         pass
                 skipped += 1
+                continue
+
+            if only_enabled and not ch.enabled:
                 continue
 
             cam = self.channel_to_camera(nvr, ch)
@@ -217,8 +209,6 @@ class NVRManager:
         print(f"[NVRManager] {nvr.name}: added={added} skipped={skipped}")
         return added
 
-    # ============================================================
-    # Statistics
     # ============================================================
     def count(self) -> int:
         return len(self._nvrs)

@@ -3,7 +3,7 @@
 import sys
 from pathlib import Path
 
-APP_NAME = "K1Motion"
+APP_NAME = "K1 VMS"
 APP_VERSION = "1.0.0"
 APP_DIR = Path(__file__).parent.resolve()
 
@@ -98,6 +98,12 @@ SENSITIVITY_MAX = 400
 SENSITIVITY_DEFAULT = 100
 
 AI_ENABLED_DEFAULT = False
+
+# ============================================================
+# 🌐 Language
+# ============================================================
+# "fa" = فارسی، "en" = English
+LANGUAGE = "fa"
 AI_MODEL_PATH = APP_DIR / "models" / "nanodet.onnx"
 AI_CONFIDENCE_THRESHOLD = 0.45
 AI_INPUT_SIZE = 320

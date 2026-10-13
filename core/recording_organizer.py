@@ -1,280 +1,198 @@
-# -*- coding: utf-8 -*-
-"""K1 VMS — Recording Folder Organizer (real move, no junctions)
-
-MediaMTX الزام دارد path فقط ASCII باشد (path = cam_xxx).
-این ماژول فایل‌های بسته شده را از _data/cam_xxx به پوشه‌های
-فارسی منتقل می‌کند (transfer واقعی، نه junction).
-
-ساختار نهایی:
-  continuous/
-    نگهبانی/           ← NVR
-      دوربین_1/         ← channel
-        2026-10-07/
-          13-14-47.ts
-    داخلی/
-      دوربین_1/
-    حراست/              ← standalone
-    _data/              ← پوشه فنی (مخفی، فایل‌های در حال نوشتن)
-      cam_xxx/
-        2026-10-07/
-          (فقط فایل‌های اخیر)
 """
+core/recording_organizer.py
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+مهاجرت ایمن ضبط‌های قدیمی از ساختار cam_xxxx به _data/cam_xxxx
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- فایل‌های در حال ضبط توسط MediaMTX قفل هستند (WinError 32)
+- با WRITE_GRACE_SEC از mtime، فایل‌های تازه skip می‌شوند
+- تمام move ها با try/except جدا محافظت می‌شوند
+- این ماژول هرگز باعث کرش startup نمی‌شود
+"""
+
+from __future__ import annotations
+
 import os
-import re
-import sys
 import shutil
-import subprocess
-import threading
 import time
 from pathlib import Path
-from typing import Optional
 
-from core.camera_manager import CameraManager
-from core.nvr_manager import NVRManager
-import config
-
-IS_WIN = sys.platform.startswith("win")
-CREATE_NO_WINDOW = 0x08000000
-
-DATA_DIR_NAME = "_data"
-# فایل‌هایی که کمتر از این مقدار از mtime گذشته، در حال نوشتن هستند
+# فایل‌هایی که کمتر از این مدت از mtime‌شان گذشته، در حال نوشتن در نظر گرفته می‌شوند
 WRITE_GRACE_SEC = 90.0
 
+# پسوند فایل‌های ضبط
+RECORDING_EXTENSIONS = (".ts", ".mp4", ".mkv")
 
-def _sanitize_fs_name(name: str) -> str:
-    if not name:
-        return ""
-    safe = re.sub(r'[<>:"/\\|?*]', "", name)
-    safe = re.sub(r"\s+", "_", safe).strip("._ ")
-    return safe[:60] or "unnamed"
+# پیشوند پوشه‌های standalone (دوربین‌های مستقل)
+CAMERA_PREFIX = "cam_"
 
+# نام پوشه‌ی مقصد مهاجرت
+ARCHIVE_DIR_NAME = "_data"
 
-def _camera_path_name(cam_uid: str) -> str:
-    ascii_uid = re.sub(r"[^a-zA-Z0-9]", "", cam_uid or "")[:16]
-    return f"cam_{ascii_uid}" if ascii_uid else "cam_unknown"
-
-
-def _build_friendly_path(cam, nvr_names: dict) -> Optional[Path]:
-    root = config.CONTINUOUS_DIR
-    if cam.nvr_uid and cam.nvr_uid in nvr_names:
-        nvr_name = _sanitize_fs_name(nvr_names[cam.nvr_uid]) or "NVR"
-        nvr_folder = root / nvr_name
-        m = re.search(r"دوربین\s+(\d+)", cam.name or "")
-        if m:
-            ch_label = f"دوربین_{m.group(1)}"
-        else:
-            ch_label = _sanitize_fs_name(cam.name) or cam.uid[:8]
-        return nvr_folder / ch_label
-    else:
-        friendly = _sanitize_fs_name(cam.name) or cam.uid[:8]
-        return root / friendly
+# مسیر پیش‌فرض (اگر از main.py پاس داده نشد)
+DEFAULT_CONTINUOUS_DIR = r"D:\recorde\k1Motion\recordings\continuous"
 
 
-def _hide_folder(path: Path):
-    if not IS_WIN or not path.exists():
-        return
+def _is_recently_written(path: Path, grace_sec: float = WRITE_GRACE_SEC) -> bool:
+    """آیا فایل به تازگی نوشته شده؟ (یعنی احتمالاً در حال ضبط است)"""
     try:
-        subprocess.run(
-            ["attrib", "+h", str(path)],
-            capture_output=True, timeout=5,
-            creationflags=CREATE_NO_WINDOW,
-        )
-    except Exception:
-        pass
+        mtime = path.stat().st_mtime
+    except OSError:
+        return True
+    return (time.time() - mtime) < grace_sec
 
 
-def organize_recordings(log_fn=None) -> dict:
+def _safe_move(src: Path, dst: Path) -> bool:
     """
-    ★ انتقال واقعی فایل‌های بسته شده از _data/cam_xxx به پوشه فارسی.
+    انتقال ایمن فایل. اگر قفل بود، False برمی‌گرداند.
+
+    Returns:
+        True اگر موفق، False اگر skip شد.
     """
-    if log_fn is None:
-        log_fn = lambda msg: None
+    try:
+        dst.parent.mkdir(parents=True, exist_ok=True)
 
-    cam_manager = CameraManager()
-    nvr_manager = NVRManager.instance()
-    nvr_names = {n.uid: n.name for n in nvr_manager.all()}
+        # اگر مقصد وجود دارد، نام را تغییر بده
+        if dst.exists():
+            base = dst.stem
+            suffix = dst.suffix
+            counter = 1
+            new_dst = dst
+            while new_dst.exists():
+                new_dst = dst.parent / f"{base}_{counter}{suffix}"
+                counter += 1
+            dst = new_dst
 
-    root = config.CONTINUOUS_DIR
-    data_root = root / DATA_DIR_NAME
-
-    if not data_root.exists():
-        return {"moved": 0, "skipped": 0, "failed": 0}
-
-    # نقشه: cam_xxx → مسیر مرتب
-    path_to_friendly = {}
-    for cam in cam_manager.all():
-        ascii_name = _camera_path_name(cam.uid)
-        friendly = _build_friendly_path(cam, nvr_names)
-        if friendly:
-            path_to_friendly[ascii_name] = friendly
-
-    cutoff = time.time() - WRITE_GRACE_SEC
-    stats = {"moved": 0, "skipped": 0, "failed": 0}
-
-    for cam_folder in list(data_root.iterdir()):
-        if not cam_folder.is_dir():
-            continue
-        if cam_folder.name not in path_to_friendly:
-            continue
-
-        friendly = path_to_friendly[cam_folder.name]
+        # اول: rename (سریع‌تر، در همان دیسک)
         try:
-            friendly.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            log_fn(f"[Organizer] mkdir failed {friendly}: {e}")
-            stats["failed"] += 1
-            continue
+            os.replace(src, dst)
+            return True
+        except OSError:
+            pass
 
-        for date_folder in list(cam_folder.iterdir()):
-            if not date_folder.is_dir():
-                continue
-            target_date = friendly / date_folder.name
-            try:
-                target_date.mkdir(parents=True, exist_ok=True)
-            except Exception:
-                continue
+        # fallback: copy + delete
+        shutil.copy2(src, dst)
+        try:
+            src.unlink()
+        except OSError:
+            pass
+        return True
 
-            for ts_file in list(date_folder.glob("*.ts")):
-                try:
-                    # فایل در حال نوشتن؟
-                    if ts_file.stat().st_mtime > cutoff:
-                        stats["skipped"] += 1
-                        continue
-                    target = target_date / ts_file.name
-                    if target.exists():
-                        stats["skipped"] += 1
-                        continue
-                    shutil.move(str(ts_file), str(target))
-                    stats["moved"] += 1
-                except (PermissionError, OSError):
-                    # فایل قفل است → skip
-                    stats["skipped"] += 1
-                except Exception:
-                    stats["failed"] += 1
+    except PermissionError:
+        # WinError 32: فایل توسط process دیگری قفل است
+        return False
+    except OSError:
+        return False
+    except Exception as e:
+        print(f"[RecordingOrganizer] ⚠ خطای غیرمنتظره در {src}: {e}")
+        return False
 
-    # پاک کردن پوشه‌های خالی در _data
+
+def _should_migrate(cam_dir: Path) -> bool:
+    """آیا این پوشه دوربین نیاز به مهاجرت دارد؟"""
+    if not cam_dir.is_dir():
+        return False
+    if cam_dir.name == ARCHIVE_DIR_NAME:
+        return False
+    if not cam_dir.name.startswith(CAMERA_PREFIX):
+        return False
+    return True
+
+
+def _cleanup_empty_dirs(root: Path) -> None:
+    """حذف پوشه‌های خالی به صورت بازگشتی (بدون خطا)."""
     try:
-        for cam_folder in list(data_root.iterdir()):
-            if not cam_folder.is_dir():
+        for current, dirs, files in os.walk(root, topdown=False):
+            current_path = Path(current)
+            if current_path == root:
                 continue
-            for date_folder in list(cam_folder.iterdir()):
-                if not date_folder.is_dir():
-                    continue
-                try:
-                    if not any(date_folder.iterdir()):
-                        date_folder.rmdir()
-                except Exception:
-                    pass
             try:
-                if not any(cam_folder.iterdir()):
-                    cam_folder.rmdir()
-            except Exception:
+                if not any(current_path.iterdir()):
+                    current_path.rmdir()
+            except OSError:
                 pass
     except Exception:
         pass
 
+
+def organize_recordings(continuous_dir: Path | str) -> dict:
+    """
+    مهاجرت ایمن ضبط‌های قدیمی.
+
+    Args:
+        continuous_dir: مسیر D:\\recorde\\k1Motion\\recordings\\continuous
+
+    Returns:
+        dict با آمار: {"moved": int, "skipped": int, "errors": int}
+    """
+    continuous_dir = Path(continuous_dir)
+    if not continuous_dir.is_dir():
+        return {"moved": 0, "skipped": 0, "errors": 0}
+
+    stats = {"moved": 0, "skipped": 0, "errors": 0}
+    archive_root = continuous_dir / ARCHIVE_DIR_NAME
+
+    try:
+        cam_dirs = list(continuous_dir.iterdir())
+    except OSError:
+        return stats
+
+    for cam_dir in cam_dirs:
+        if not _should_migrate(cam_dir):
+            continue
+
+        try:
+            date_dirs = list(cam_dir.rglob("*"))
+        except OSError:
+            continue
+
+        for item in date_dirs:
+            if not item.is_file():
+                continue
+            if item.suffix.lower() not in RECORDING_EXTENSIONS:
+                continue
+
+            # skip فایل‌های تازه (در حال ضبط)
+            if _is_recently_written(item):
+                stats["skipped"] += 1
+                continue
+
+            try:
+                rel = item.relative_to(continuous_dir)
+            except ValueError:
+                continue
+
+            dst = archive_root / rel
+
+            if _safe_move(item, dst):
+                stats["moved"] += 1
+            else:
+                stats["errors"] += 1
+
+    # پاکسازی پوشه‌های خالی
+    _cleanup_empty_dirs(continuous_dir)
+
     return stats
 
 
-class RecordingOrganizer(threading.Thread):
-    """داون‌مون هر ۳۰ ثانیه فایل‌ها را منتقل می‌کند."""
-    INTERVAL_SEC = 30
-
-    def __init__(self):
-        super().__init__(daemon=True, name="k1-recording-organizer")
-        self._stop_event = threading.Event()
-
-    def stop(self):
-        self._stop_event.set()
-
-    def run(self):
-        # بار اول با تأخیر
-        try:
-            time.sleep(60)
-            stats = organize_recordings(log_fn=lambda m: print(m))
-            print(f"[Organizer] first run: {stats}")
-        except Exception as e:
-            print(f"[Organizer] error on first run: {e}")
-
-        while not self._stop_event.wait(self.INTERVAL_SEC):
-            try:
-                stats = organize_recordings()
-                if stats.get("moved", 0) > 0:
-                    print(f"[Organizer] moved {stats['moved']} files "
-                          f"(skipped={stats['skipped']})")
-            except Exception as e:
-                print(f"[Organizer] run error: {e}")
-
-
-def migrate_old_recordings(log_fn=None):
+def migrate_old_recordings(continuous_dir: Path | str | None = None) -> int:
     """
-    انتقال پوشه‌های قدیمی (cam_xxx در ریشه) به _data.
-    ★ پوشه‌های junction قبلی را هم حذف می‌کند.
+    API سازگار با main.py — تعداد فایل‌های منتقل‌شده را برمی‌گرداند.
+
+    این تابع هرگز exception پرتاب نمی‌کند (کاملاً safe برای startup).
     """
-    if log_fn is None:
-        log_fn = lambda msg: None
-
-    root = config.CONTINUOUS_DIR
-    data_root = root / DATA_DIR_NAME
-    data_root.mkdir(parents=True, exist_ok=True)
-    _hide_folder(data_root)
-
-    moved = 0
-
-    # ★ حذف junctionهای قدیمی (اسم فارسی که junction هستند)
-    for p in list(root.iterdir()):
-        if not p.is_dir():
-            continue
-        if p.name == DATA_DIR_NAME:
-            continue
-        if p.name.startswith("cam_"):
-            # این پوشه واقعی است، منتقل کن
-            try:
-                target = data_root / p.name
-                if target.exists():
-                    for item in p.iterdir():
-                        sub_target = target / item.name
-                        if sub_target.exists():
-                            continue
-                        shutil.move(str(item), str(sub_target))
-                    try:
-                        p.rmdir()
-                    except Exception:
-                        pass
-                    continue
-                shutil.move(str(p), str(target))
-                moved += 1
-                log_fn(f"[Organizer] moved {p.name} → _data/")
-            except Exception as e:
-                log_fn(f"[Organizer] move failed for {p.name}: {e}")
-            continue
-
-        # حذف junction قدیمی (اگر اسم NVR یا دوربین است)
-        # junction معمولاً حجم صفر و محتوای خالی دارد
-        try:
-            # بررسی اینکه آیا junction است
-            if p.is_symlink() or _is_junction(p):
-                try:
-                    p.rmdir()
-                    log_fn(f"[Organizer] removed old junction {p.name}")
-                except Exception as e:
-                    log_fn(f"[Organizer] junction remove failed {p.name}: {e}")
-        except Exception:
-            pass
-
-    if moved:
-        log_fn(f"[Organizer] migrated {moved} old folders to _data/")
-    return moved
-
-
-def _is_junction(path: Path) -> bool:
-    """چک کردن اینکه آیا مسیر یک junction است."""
-    if not IS_WIN:
-        return False
     try:
-        # junctionها با os.path.islink شناخته نمی‌شوند در ویندوز
-        # ولی st_reparse_tag نشون می‌ده
-        st = os.lstat(str(path))
-        return bool(st.st_file_attributes & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
-    except Exception:
-        return False
+        if continuous_dir is None:
+            continuous_dir = DEFAULT_CONTINUOUS_DIR
+
+        stats = organize_recordings(continuous_dir)
+        moved = stats.get("moved", 0)
+
+        if moved or stats.get("errors") or stats.get("skipped"):
+            print(
+                f"[RecordingOrganizer] moved={stats['moved']} "
+                f"skipped={stats['skipped']} errors={stats['errors']}"
+            )
+        return moved
+    except Exception as e:
+        print(f"[RecordingOrganizer] migrate failed (safe): {e}")
+        return 0

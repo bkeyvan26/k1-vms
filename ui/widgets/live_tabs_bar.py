@@ -118,7 +118,8 @@ class LiveTabsBar(QWidget):
 
         self._buttons = []
 
-        self.btn_new = QPushButton("＋  تب جدید")
+        from core.i18n import t
+        self.btn_new = QPushButton("＋  " + t("live.tab.new").lstrip("+ ").strip())
         self.btn_new.setFixedHeight(28)
         self.btn_new.setCursor(Qt.PointingHandCursor)
         self.btn_new.clicked.connect(self.new_tab_requested.emit)

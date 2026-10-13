@@ -1,102 +1,70 @@
 # -*- coding: utf-8 -*-
-"""K1 VMS — Placeholder pages for upcoming phases.
-
-Playback is intentionally NOT here; it lives in ui/pages/playback_page.py
-"""
+"""K1 VMS — Placeholder pages (i18n)"""
 from ui.pages import PlaceholderPage
-
-
-class LivePage(PlaceholderPage):
-    """Phase 3 — Multi-camera live monitoring grid."""
-    def __init__(self, parent=None):
-        super().__init__(
-            key="live",
-            title="Live View",
-            icon_name="video",
-            subtitle="Multi-camera live monitoring — Phase 3",
-            parent=parent
-        )
+from core.i18n import t
 
 
 class AlarmsPage(PlaceholderPage):
-    """Phase 5 — Alarm and event management."""
     def __init__(self, parent=None):
         super().__init__(
             key="alarms",
-            title="Alarms",
+            title=t("rail.alarms").split("(")[0].strip(),
             icon_name="bell",
-            subtitle="Alarm & event management — Phase 5",
+            subtitle="مدیریت هشدارها — فاز ۵",
             parent=parent
         )
 
 
 class AIPage(PlaceholderPage):
-    """Phase 6 — AI-powered video analytics."""
     def __init__(self, parent=None):
         super().__init__(
             key="ai",
-            title="AI Analytics",
+            title=t("rail.ai").split("(")[0].strip(),
             icon_name="cpu",
-            subtitle="AI-powered video analytics — Phase 6",
+            subtitle="تحلیل هوشمند ویدیو — فاز ۶",
             parent=parent
         )
 
 
 class SearchPage(PlaceholderPage):
-    """Future phase — Cross-camera and event search."""
     def __init__(self, parent=None):
         super().__init__(
             key="search",
-            title="Search",
+            title=t("rail.search").split("(")[0].strip(),
             icon_name="search",
-            subtitle="Search across cameras and events",
+            subtitle="جستجو در دوربین‌ها و رویدادها",
             parent=parent
         )
 
 
 class MapPage(PlaceholderPage):
-    """Future phase — Camera map view."""
     def __init__(self, parent=None):
         super().__init__(
             key="map",
-            title="Map",
+            title=t("rail.map").split("(")[0].strip(),
             icon_name="map",
-            subtitle="Camera map view",
+            subtitle="نمای نقشه دوربین‌ها",
             parent=parent
         )
 
 
 class ReportsPage(PlaceholderPage):
-    """Future phase — System reports and statistics."""
     def __init__(self, parent=None):
         super().__init__(
             key="reports",
-            title="Reports",
+            title=t("rail.reports").split("(")[0].strip(),
             icon_name="bar-chart",
-            subtitle="System reports and statistics",
-            parent=parent
-        )
-
-
-class SettingsPage(PlaceholderPage):
-    """Phase 7 — Global settings, retention, recording, etc."""
-    def __init__(self, parent=None):
-        super().__init__(
-            key="settings",
-            title="Settings",
-            icon_name="sliders",
-            subtitle="Global settings — Phase 7",
+            subtitle="گزارش‌ها و آمار سیستم",
             parent=parent
         )
 
 
 class UsersPage(PlaceholderPage):
-    """Phase 7 — User management & permissions."""
     def __init__(self, parent=None):
         super().__init__(
             key="users",
-            title="Users",
+            title=t("rail.users"),
             icon_name="users",
-            subtitle="User management & permissions — Phase 7",
+            subtitle="مدیریت کاربران و دسترسی‌ها — فاز ۷",
             parent=parent
         )

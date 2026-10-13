@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFont
 
 import config
+from core.i18n import set_language
+set_language(getattr(config, "LANGUAGE", "fa"))   # fa یا en
 from ui import theme
 from ui.global_style import get_global_qss
 from ui.main_window import MainWindow
@@ -76,6 +78,10 @@ def main():
 
     app = QApplication(sys.argv)
     app.setApplicationName(config.APP_NAME)
+    from PySide6.QtCore import Qt
+    # بعد از app.setApplicationName(config.APP_NAME)
+    from ui.rtl_helper import install_rtl_text_filter
+    install_rtl_text_filter(app)
     app.setStyle("Fusion")
     app.setFont(QFont(theme.FONT_FAMILY, 10))
     app.setStyleSheet(get_global_qss())

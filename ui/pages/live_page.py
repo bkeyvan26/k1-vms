@@ -27,7 +27,7 @@ from ui.widgets.camera_list_widget import (
 from ui.widgets.live_tabs_bar import LiveTabsBar
 from ui.activity_bus import ActivityBus
 from ui.loading_texts import t as t_load
-
+from core.i18n import t as t_i18n
 from ui.pages.live_helpers import (
     parse_size, redact_url, build_stream_url,
     compute_output_size_for, compute_fps_for,
@@ -349,12 +349,12 @@ class LivePage(BasePage, LiveContextMenuMixin, LivePersistenceMixin):
         h.setSpacing(10)
         left = QVBoxLayout()
         left.setSpacing(2)
-        title = QLabel("📹  Live View")
+        title = QLabel("📹  " + t_i18n("live.title"))
         title.setStyleSheet(
             f"color: {theme.COLOR_TEXT_PRIMARY}; "
             f"font-size: 14px; font-weight: 700;")
         left.addWidget(title)
-        subtitle = QLabel("Layout:")
+        subtitle = QLabel(t_i18n("live.layout") + ":")
         subtitle.setStyleSheet(
             f"color: {theme.COLOR_TEXT_SECONDARY}; font-size: 10px;")
         left.addWidget(subtitle)
@@ -409,7 +409,7 @@ class LivePage(BasePage, LiveContextMenuMixin, LivePersistenceMixin):
         v.setSpacing(8)
 
         head = QHBoxLayout()
-        t1 = QLabel("CAMERAS & NVR")
+        t1 = QLabel(t_i18n("live.panel.cameras_nvr"))
         t1.setStyleSheet(
             f"color: {theme.COLOR_TEXT_SECONDARY}; "
             f"font-size: 10px; font-weight: 700; letter-spacing: 1.2px;")
@@ -427,6 +427,42 @@ class LivePage(BasePage, LiveContextMenuMixin, LivePersistenceMixin):
         self.btn_groups.clicked.connect(self._on_manage_groups)
         head.addWidget(self.btn_groups)
         v.addLayout(head)
+
+        # ★ Search box
+        from PySide6.QtWidgets import QLineEdit
+        search_wrap = QFrame()
+        search_wrap.setStyleSheet(
+            f"QFrame {{ background: {theme.COLOR_BG_DARK}; "
+            f"border: 1px solid {theme.COLOR_BORDER}; "
+            f"border-radius: 6px; }}"
+        )
+        search_lay = QHBoxLayout(search_wrap)
+        search_lay.setContentsMargins(8, 2, 8, 2)
+        search_lay.setSpacing(4)
+        search_icon = QLabel("🔍")
+        search_icon.setStyleSheet(
+            f"color: {theme.COLOR_TEXT_SECONDARY}; font-size: 12px; "
+            f"background: transparent; border: none;"
+        )
+        search_lay.addWidget(search_icon)
+        self.search_edit = QLineEdit()
+        self.search_edit.setPlaceholderText(t_i18n("cam.search.ph"))
+        self.search_edit.setClearButtonEnabled(True)
+        self.search_edit.setStyleSheet(f"""
+            QLineEdit {{
+                background: transparent;
+                color: {theme.COLOR_TEXT_PRIMARY};
+                border: none;
+                padding: 4px 2px;
+                font-size: 12px;
+            }}
+            QLineEdit:focus {{
+                background: transparent;
+            }}
+        """)
+        self.search_edit.textChanged.connect(self._on_search_changed)
+        search_lay.addWidget(self.search_edit, 1)
+        v.addWidget(search_wrap)
 
         self.cam_list = CameraTreeWidget()
         self.cam_list.setStyleSheet(
@@ -2000,6 +2036,33 @@ class LivePage(BasePage, LiveContextMenuMixin, LivePersistenceMixin):
         if hasattr(self, "tabs_bar"):
             self.tabs_bar.refresh(self.tabs_manager)
 
+
+    # ============================================================
+    # Search filter
+    # ============================================================
+    def _on_search_changed(self, text: str):
+        text = (text or "").strip().lower()
+        try:
+            for i in range(self.cam_list.topLevelItemCount()):
+                top = self.cam_list.topLevelItem(i)
+                self._filter_item(top, text)
+        except Exception as e:
+            print(f"[live] search filter error: {e}")
+
+    def _filter_item(self, item, text: str) -> bool:
+        item_text = (item.text(0) or "").lower()
+        self_match = (not text) or (text in item_text)
+        any_child_match = False
+        for i in range(item.childCount()):
+            child = item.child(i)
+            if self._filter_item(child, text):
+                any_child_match = True
+        visible = self_match or any_child_match
+        item.setHidden(not visible)
+        if text and any_child_match:
+            item.setExpanded(True)
+        return visible
+
     def shutdown(self):
         if self._shutting_down:
             return
@@ -2102,6 +2165,12 @@ class LivePage(BasePage, LiveContextMenuMixin, LivePersistenceMixin):
                 self.cam_list.add_standalone_under(root, c)
 
         self.cam_list.blockSignals(False)
+
+        # ★ اعمال مجدد فیلتر جستجو
+        if hasattr(self, "search_edit"):
+            cur = self.search_edit.text()
+            if cur:
+                self._on_search_changed(cur)
 
     def _restore_state(self):
         self._restoring = True

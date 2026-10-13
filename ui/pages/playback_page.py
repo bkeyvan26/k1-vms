@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""K1 VMS — Playback page (Phase 6.7.4: crash-safe)"""
+"""K1 VMS — Playback page (Phase 10.5: i18n)"""
 import datetime
 from pathlib import Path
 
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton, QComboBox,
     QListWidget, QListWidgetItem, QWidget, QSlider, QMenu,
-    QAbstractItemView
+    QAbstractItemView, QLineEdit
 )
 from PySide6.QtCore import (
     Qt, QTimer, QPoint, QMimeData, QObject, Signal, QRunnable, QThreadPool
@@ -29,6 +29,7 @@ from core.camera_manager import CameraManager
 from core.nvr_engine import _camera_path_name
 from core.recording_indexer import RecordingIndexer, STATE_WRITING
 from core import settings_manager
+from core.i18n import t
 import config
 
 
@@ -59,7 +60,7 @@ class _PlaybackLoadingOverlay(QFrame):
         )
         lay.addWidget(self.icon)
 
-        self.text = QLabel("در حال آماده‌سازی پخش…")
+        self.text = QLabel(t("pb.loading_playback"))
         self.text.setAlignment(Qt.AlignCenter)
         self.text.setStyleSheet(
             f"color: {theme.COLOR_TEXT_PRIMARY}; font-size: 11px; font-weight: 700;"
@@ -75,7 +76,9 @@ class _PlaybackLoadingOverlay(QFrame):
         self._frame = (self._frame + 1) % len(self._FRAMES)
         self.icon.setText(self._FRAMES[self._frame])
 
-    def show_loading(self, text="در حال آماده‌سازی پخش…"):
+    def show_loading(self, text=None):
+        if text is None:
+            text = t("pb.loading_playback")
         self.text.setText(text)
         self._frame = 0
         self.icon.setText(self._FRAMES[0])
@@ -94,12 +97,7 @@ class _ScanSignals(QObject):
 
 
 class _ScanJob(QRunnable):
-    """Crash-safe background scan job.
-
-    The runnable is deliberately kept alive until its signal delivery has
-    completed. This prevents PySide from deleting _ScanSignals while the
-    worker thread is still emitting.
-    """
+    """Crash-safe background scan job."""
     def __init__(self, fn):
         super().__init__()
         self.setAutoDelete(False)
@@ -156,10 +154,6 @@ class PlaybackPage(BasePage):
         self._cut_in = None
         self._cut_out = None
         self._scan_cache = {}
-        # Playback indexing is intentionally isolated and capped. A global
-        # pool can otherwise launch many FFprobe/filesystem scans when a user
-        # clicks dates/cameras rapidly, starving the rest of the VMS as the
-        # camera count grows into the hundreds.
         self._scan_pool = QThreadPool(self)
         self._scan_pool.setMaxThreadCount(2)
         self._scan_pool.setExpiryTimeout(15000)
@@ -201,7 +195,7 @@ class PlaybackPage(BasePage):
         h.setContentsMargins(12, 6, 12, 6)
         h.setSpacing(8)
 
-        title = QLabel("🎬 Playback")
+        title = QLabel("🎬 " + t("pb.title"))
         title.setStyleSheet(
             f"color: {theme.COLOR_TEXT_PRIMARY}; "
             f"font-size: 14px; font-weight: 700;"
@@ -209,15 +203,19 @@ class PlaybackPage(BasePage):
         h.addWidget(title)
         h.addSpacing(12)
 
-        lay_lbl = QLabel("چیدمان:")
+        lay_lbl = QLabel(t("pb.layout"))
         lay_lbl.setStyleSheet(
             f"color: {theme.COLOR_TEXT_SECONDARY}; font-size: 10px;")
         h.addWidget(lay_lbl)
 
         self.layout_combo = QComboBox()
         self.layout_combo.setFixedWidth(90)
-        for label, key in [("۱ کاشی", "1x1"), ("۲ کاشی", "1+1"),
-                           ("۴ کاشی", "2x2"), ("۹ کاشی", "3x3")]:
+        for label, key in [
+            (t("pb.tile_1"), "1x1"),
+            (t("pb.tile_2"), "1+1"),
+            (t("pb.tile_4"), "2x2"),
+            (t("pb.tile_9"), "3x3"),
+        ]:
             self.layout_combo.addItem(label, key)
         self.layout_combo.setCurrentIndex(2)
         self.layout_combo.currentIndexChanged.connect(
@@ -259,7 +257,7 @@ class PlaybackPage(BasePage):
 
         h.addSpacing(6)
 
-        self.today_btn = QPushButton("Today")
+        self.today_btn = QPushButton(t("pb.today"))
         self.today_btn.setFixedHeight(26)
         self.today_btn.setCursor(Qt.PointingHandCursor)
         self.today_btn.clicked.connect(self._go_today)
@@ -291,7 +289,7 @@ class PlaybackPage(BasePage):
 
     def _build_left_panel(self):
         panel = QFrame()
-        panel.setFixedWidth(180)
+        panel.setFixedWidth(150)   # ★ از 180 به 150 (کوچیک‌تر)
         panel.setStyleSheet(f"""
             QFrame {{
                 background: {theme.COLOR_BG_PANEL};
@@ -299,16 +297,50 @@ class PlaybackPage(BasePage):
             }}
         """)
         v = QVBoxLayout(panel)
-        v.setContentsMargins(8, 8, 8, 8)
-        v.setSpacing(6)
+        v.setContentsMargins(6, 6, 6, 6)
+        v.setSpacing(4)
 
-        title = QLabel("CAMERAS")
+        title = QLabel(t("pb.cameras"))
         title.setStyleSheet(f"""
             color: {theme.COLOR_TEXT_SECONDARY};
             font-size: 10px; font-weight: 700;
-            letter-spacing: 1.5px; padding: 4px;
+            letter-spacing: 1.5px; padding: 2px 4px;
         """)
         v.addWidget(title)
+
+        # ★ Search box
+        search_wrap = QFrame()
+        search_wrap.setStyleSheet(f"""
+            QFrame {{
+                background: {theme.COLOR_BG_DARK};
+                border: 1px solid {theme.COLOR_BORDER};
+                border-radius: 5px;
+            }}
+        """)
+        search_lay = QHBoxLayout(search_wrap)
+        search_lay.setContentsMargins(6, 1, 6, 1)
+        search_lay.setSpacing(3)
+        s_icon = QLabel("🔍")
+        s_icon.setStyleSheet(
+            f"color: {theme.COLOR_TEXT_SECONDARY}; font-size: 11px; "
+            f"background: transparent; border: none;"
+        )
+        search_lay.addWidget(s_icon)
+        self.cam_search_edit = QLineEdit()
+        self.cam_search_edit.setPlaceholderText("جستجو…")
+        self.cam_search_edit.setClearButtonEnabled(True)
+        self.cam_search_edit.setStyleSheet(f"""
+            QLineEdit {{
+                background: transparent;
+                color: {theme.COLOR_TEXT_PRIMARY};
+                border: none;
+                padding: 3px 0;
+                font-size: 11px;
+            }}
+        """)
+        self.cam_search_edit.textChanged.connect(self._on_cam_search)
+        search_lay.addWidget(self.cam_search_edit, 1)
+        v.addWidget(search_wrap)
 
         self.cam_list = PlaybackCameraList()
         self.cam_list.setStyleSheet(f"""
@@ -316,9 +348,9 @@ class PlaybackPage(BasePage):
                 background: {theme.COLOR_BG_DARK};
                 color: {theme.COLOR_TEXT_PRIMARY};
                 border: 1px solid {theme.COLOR_BORDER};
-                border-radius: 6px; padding: 3px; font-size: 12px;
+                border-radius: 6px; padding: 3px; font-size: 11px;
             }}
-            QListWidget::item {{ padding: 9px 10px; border-radius: 4px; }}
+            QListWidget::item {{ padding: 7px 8px; border-radius: 4px; }}
             QListWidget::item:hover {{ background: {theme.COLOR_BG_HOVER}; }}
             QListWidget::item:selected {{
                 background: {theme.COLOR_ACCENT}; color: white;
@@ -328,14 +360,10 @@ class PlaybackPage(BasePage):
         self.cam_list.itemClicked.connect(self._on_cam_clicked)
         v.addWidget(self.cam_list, 1)
 
-        hint = QLabel(
-            "• دابل کلیک: کاشی خالی بعدی\n"
-            "• Drag روی کاشی: همان کاشی\n"
-            "• دابل کلیک روی کاشی: تک‌صفحه\n"
-            "• 💡 فقط کاشی فعال پخش می‌شود")
+        hint = QLabel(t("pb.hint"))
         hint.setWordWrap(True)
         hint.setStyleSheet(
-            f"color: {theme.COLOR_TEXT_MUTED}; font-size: 10px; padding: 4px;")
+            f"color: {theme.COLOR_TEXT_MUTED}; font-size: 9px; padding: 2px;")
         v.addWidget(hint)
 
         return panel
@@ -374,11 +402,11 @@ class PlaybackPage(BasePage):
         th.setContentsMargins(8, 4, 8, 4)
         th.setSpacing(4)
 
-        self.btn_close = self._small_btn("x", "بستن کاشی فعال")
+        self.btn_close = self._small_btn("x", t("pb.btn_close_cell"))
         self.btn_close.clicked.connect(self._close_active_cell)
         th.addWidget(self.btn_close)
 
-        self.btn_snap = self._small_btn("camera", "عکس فوری")
+        self.btn_snap = self._small_btn("camera", t("pb.btn_snapshot"))
         self.btn_snap.clicked.connect(self._on_snapshot)
         th.addWidget(self.btn_snap)
 
@@ -386,11 +414,12 @@ class PlaybackPage(BasePage):
         th.addWidget(self._vsep())
         th.addSpacing(8)
 
-        self.btn_prev_seg = self._small_btn("skip-back", "قطعه قبلی")
+        self.btn_prev_seg = self._small_btn("skip-back", t("pb.btn_prev_seg"))
         self.btn_prev_seg.clicked.connect(self._prev_segment)
         th.addWidget(self.btn_prev_seg)
 
-        self.btn_step_back = self._small_btn("chevron-left", "یک فریم عقب")
+        self.btn_step_back = self._small_btn("chevron-left",
+                                             t("pb.btn_step_back"))
         self.btn_step_back.clicked.connect(lambda: self._step(-1))
         th.addWidget(self.btn_step_back)
 
@@ -398,7 +427,7 @@ class PlaybackPage(BasePage):
         self.btn_play.setIcon(make_icon("play-circle", "white", 20))
         self.btn_play.setFixedSize(40, 32)
         self.btn_play.setCursor(Qt.PointingHandCursor)
-        self.btn_play.setToolTip("پخش / توقف (Space)")
+        self.btn_play.setToolTip(t("pb.btn_play_pause"))
         self.btn_play.clicked.connect(self._toggle)
         self.btn_play.setStyleSheet(f"""
             QPushButton {{
@@ -409,15 +438,17 @@ class PlaybackPage(BasePage):
         """)
         th.addWidget(self.btn_play)
 
-        self.btn_stop = self._small_btn("x", "توقف")
+        self.btn_stop = self._small_btn("x", t("pb.btn_stop"))
         self.btn_stop.clicked.connect(self._stop)
         th.addWidget(self.btn_stop)
 
-        self.btn_step_fwd = self._small_btn("chevron-right", "یک فریم جلو")
+        self.btn_step_fwd = self._small_btn("chevron-right",
+                                            t("pb.btn_step_fwd"))
         self.btn_step_fwd.clicked.connect(lambda: self._step(1))
         th.addWidget(self.btn_step_fwd)
 
-        self.btn_next_seg = self._small_btn("skip-forward", "قطعه بعدی")
+        self.btn_next_seg = self._small_btn("skip-forward",
+                                            t("pb.btn_next_seg"))
         self.btn_next_seg.clicked.connect(self._next_segment)
         th.addWidget(self.btn_next_seg)
 
@@ -460,8 +491,7 @@ class PlaybackPage(BasePage):
         th.addWidget(self._vsep())
         th.addSpacing(8)
 
-        self.btn_cut = self._small_btn("edit",
-                                       "برش: کلیک ۱ = شروع، کلیک ۲ = پایان")
+        self.btn_cut = self._small_btn("edit", t("pb.btn_cut"))
         self.btn_cut.clicked.connect(self._on_cut_clicked)
         th.addWidget(self.btn_cut)
 
@@ -473,18 +503,15 @@ class PlaybackPage(BasePage):
 
         th.addStretch(1)
 
-        self.btn_export = self._small_btn("save", "خروجی")
+        self.btn_export = self._small_btn("save", t("pb.btn_export"))
         self.btn_export.clicked.connect(self._open_export_dialog)
         th.addWidget(self.btn_export)
 
-        # ★ دو دکمه fullscreen جدا
-        self.btn_fs = self._small_btn("maximize",
-                                      "کاشی فعال — تمام‌صفحه")
+        self.btn_fs = self._small_btn("maximize", t("pb.btn_fs_cell"))
         self.btn_fs.clicked.connect(self._toggle_active_cell_fullscreen)
         th.addWidget(self.btn_fs)
 
-        self.btn_app_fs = self._small_btn("maximize-2",
-                                          "کل برنامه — تمام‌صفحه (F11)")
+        self.btn_app_fs = self._small_btn("maximize-2", t("pb.btn_fs_app"))
         self.btn_app_fs.clicked.connect(self._toggle_app_fullscreen)
         th.addWidget(self.btn_app_fs)
 
@@ -504,7 +531,7 @@ class PlaybackPage(BasePage):
         v.setContentsMargins(10, 10, 10, 10)
         v.setSpacing(10)
 
-        cal_title = QLabel("تقویم ضبط")
+        cal_title = QLabel(t("pb.calendar_title"))
         cal_title.setStyleSheet(f"""
             color: {theme.COLOR_TEXT_SECONDARY};
             font-size: 10px; font-weight: 700; letter-spacing: 1px;
@@ -530,10 +557,10 @@ class PlaybackPage(BasePage):
         legend = QHBoxLayout()
         legend.setSpacing(6)
         for color, label in [
-            ("#e74c3c", "ضبط‌شده"),
-            ("#f1c40f", "حرکت"),
-            ("#0a1a2a", "بدون حرکت"),
-            ("#000000", "بدون ضبط"),
+            ("#e74c3c", t("pb.legend_recorded")),
+            ("#f1c40f", t("pb.legend_motion")),
+            ("#0a1a2a", t("pb.legend_no_motion")),
+            ("#000000", t("pb.legend_no_record")),
         ]:
             w = QWidget()
             lh = QHBoxLayout(w)
@@ -553,16 +580,16 @@ class PlaybackPage(BasePage):
 
         v.addSpacing(4)
 
-        info_title = QLabel("اطلاعات کاشی فعال")
+        info_title = QLabel(t("pb.info_title"))
         info_title.setStyleSheet(cal_title.styleSheet())
         v.addWidget(info_title)
 
         self.info_rows = {}
         for key, label in [
-            ("camera", "دوربین"),
-            ("date", "تاریخ"),
-            ("time", "زمان"),
-            ("count", "تعداد قطعات"),
+            ("camera", t("pb.camera")),
+            ("date", t("pb.date")),
+            ("time", t("pb.time")),
+            ("count", t("pb.count")),
         ]:
             v.addWidget(self._info_row(key, label))
 
@@ -602,7 +629,7 @@ class PlaybackPage(BasePage):
 
         hdr = QHBoxLayout()
         hdr.setSpacing(6)
-        hdr.addWidget(self._lbl("Timeline"))
+        hdr.addWidget(self._lbl(t("pb.timeline")))
         hdr.addStretch(1)
 
         self.time_lbl = QLabel("--:--:-- / --:--:--")
@@ -682,6 +709,15 @@ class PlaybackPage(BasePage):
             item.setData(Qt.UserRole, c.uid)
             self.cam_list.addItem(item)
         self.cam_list.blockSignals(False)
+    def _on_cam_search(self, text: str):
+        """فیلتر لیست دوربین‌های Playback."""
+        text = (text or "").strip().lower()
+        for i in range(self.cam_list.count()):
+            item = self.cam_list.item(i)
+            if not text:
+                item.setHidden(False)
+            else:
+                item.setHidden(text not in item.text().lower())
 
     # ============================================================
     def _scan_dates(self, cam_uid):
@@ -746,8 +782,6 @@ class PlaybackPage(BasePage):
         return out
 
     # ============================================================
-    # ★ Single-active (defensive)
-    # ============================================================
     def _pause_other_engines(self, keep_idx):
         for i, cell in enumerate(self.grid.get_cells()):
             if i == keep_idx:
@@ -763,14 +797,11 @@ class PlaybackPage(BasePage):
 
     # ============================================================
     def _on_cam_clicked(self, item):
-        """Professional workflow: Camera -> recorded dates -> time -> Play."""
         uid = item.data(Qt.UserRole)
         if uid:
             self._select_camera(uid)
 
     def _on_cam_double_clicked(self, item):
-        # Keep the same deterministic workflow; double-click is only a
-        # convenience for selecting the camera, never an implicit Play.
         uid = item.data(Qt.UserRole)
         if uid:
             self._select_camera(uid)
@@ -793,8 +824,6 @@ class PlaybackPage(BasePage):
         self.grid._update_active()
         self._pause_other_engines(keep_idx=idx)
 
-        # Clear the previous date/time state immediately. Nothing can play
-        # until a valid recording day is selected.
         self._scan_generation += 1
         self._available_recording_dates = set()
         self.calendar.set_recording_dates(set())
@@ -802,12 +831,12 @@ class PlaybackPage(BasePage):
         self.timeline.setEnabled(False)
         self._update_date_label(None)
         self.info_rows["camera"].setText(cam.name or uid)
-        self.info_rows["date"].setText("یک تاریخ ضبط را انتخاب کنید")
+        self.info_rows["date"].setText(t("pb.select_date"))
         self.info_rows["time"].setText("—")
         self.info_rows["count"].setText("—")
 
         cell = self.grid.get_cell(idx)
-        self._show_playback_loading("در حال بررسی تاریخ‌های ضبط…")
+        self._show_playback_loading(t("pb.loading_scan"))
         try:
             ActivityBus.instance().show(
                 t_load("playback_scan", camera=cam.name or uid))
@@ -852,14 +881,11 @@ class PlaybackPage(BasePage):
         self._load_camera_to_cell(uid, cell_idx)
 
     def _load_camera_to_cell(self, uid, cell_idx):
-        # Drag-and-drop follows exactly the same camera-first workflow.
         self._selected_camera_uid = uid
         self.grid._active_idx = cell_idx
         self.grid._update_active()
         self._select_camera(uid, preferred_idx=cell_idx)
 
-    # ============================================================
-    # Cell interaction
     # ============================================================
     def _on_cell_clicked(self, idx):
         self._pause_other_engines(keep_idx=idx)
@@ -868,7 +894,6 @@ class PlaybackPage(BasePage):
         self._update_panel_segments()
 
     def _on_cell_double_clicked(self, idx):
-        """فقط active_idx را sync کن. pause از _on_fs_about_to_change."""
         self.grid._active_idx = idx
         self.grid._update_active()
         self._bind_active_cell()
@@ -894,31 +919,31 @@ class PlaybackPage(BasePage):
         """)
 
         if cell.cam_uid():
-            act_close = QAction("بستن کاشی", self)
+            act_close = QAction(t("pb.menu_close_cell"), self)
             act_close.triggered.connect(lambda: self._close_cell(idx))
             menu.addAction(act_close)
 
-            act_snap = QAction("عکس فوری", self)
+            act_snap = QAction(t("pb.menu_snapshot"), self)
             act_snap.triggered.connect(self._on_snapshot)
             menu.addAction(act_snap)
 
             if self.grid.is_fullscreen():
-                act_exit = QAction("خروج از تمام‌صفحه", self)
+                act_exit = QAction(t("pb.menu_exit_fs"), self)
                 act_exit.triggered.connect(self.grid.exit_fullscreen)
                 menu.addAction(act_exit)
             else:
-                act_fs = QAction("تمام‌صفحه کاشی", self)
+                act_fs = QAction(t("pb.menu_fs_cell"), self)
                 act_fs.triggered.connect(
                     lambda: self._toggle_active_cell_fullscreen())
                 menu.addAction(act_fs)
 
             menu.addSeparator()
 
-            act_export = QAction("خروجی...", self)
+            act_export = QAction(t("pb.menu_export"), self)
             act_export.triggered.connect(self._open_export_dialog)
             menu.addAction(act_export)
         else:
-            act_help = QAction("برای بارگذاری، دوربین را drag کن", self)
+            act_help = QAction(t("pb.menu_drag_hint"), self)
             act_help.setEnabled(False)
             menu.addAction(act_help)
 
@@ -968,14 +993,15 @@ class PlaybackPage(BasePage):
         self.info_rows["camera"].setText(cell.cam_name())
         if cell.day():
             self.info_rows["date"].setText(cell.day().strftime("%Y-%m-%d"))
-        self.info_rows["count"].setText(f"{len(cell.segments())} قطعه")
+        self.info_rows["count"].setText(
+            f"{len(cell.segments())} {t('pb.count')}")
 
     def _on_layout_changed(self, idx):
         key = self.layout_combo.itemData(idx)
         if key:
             self.grid.set_layout(key)
 
-    def _show_playback_loading(self, text="در حال آماده‌سازی پخش…"):
+    def _show_playback_loading(self, text=None):
         try:
             self.playback_overlay.setGeometry(self.grid.rect())
             self.playback_overlay.show_loading(text)
@@ -1003,15 +1029,15 @@ class PlaybackPage(BasePage):
                 from core.trace import new_trace
                 cell = self.grid.get_active_cell()
                 cam_name = cell.cam_name() if cell else ""
-                t = new_trace("PLAY", camera=cam_name)
-                t.mark("PLAY_CLICK")
-                eng.set_active_trace(t)
+                tr = new_trace("PLAY", camera=cam_name)
+                tr.mark("PLAY_CLICK")
+                eng.set_active_trace(tr)
         except Exception:
             pass
         was_playing = eng.is_playing()
         eng.toggle()
         if not was_playing:
-            self._show_playback_loading("در حال آماده‌سازی پخش…")
+            self._show_playback_loading(t("pb.loading_playback"))
 
     def _stop(self):
         eng = self._active_engine()
@@ -1044,7 +1070,8 @@ class PlaybackPage(BasePage):
             eng.seek(segs[idx + 1]["start"])
 
     def _on_speed_slider(self, value):
-        speed_map = {0: 1/3, 1: 0.5, 2: 0.75, 3: 1.0, 4: 2.0, 5: 4.0, 6: 8.0, 7: 16.0}
+        speed_map = {0: 1/3, 1: 0.5, 2: 0.75, 3: 1.0, 4: 2.0, 5: 4.0,
+                     6: 8.0, 7: 16.0}
         s = speed_map.get(value, 1.0)
         self.speed_lbl.setText(f"{s:g}x")
         eng = self._active_engine()
@@ -1060,12 +1087,12 @@ class PlaybackPage(BasePage):
             from core.trace import new_trace
             cell = self.grid.get_active_cell()
             cam_name = cell.cam_name() if cell else ""
-            t = new_trace("SEEK", camera=cam_name)
-            t.mark("USER_SEEK_CLICK", target=f"{float(seconds):.2f}")
-            eng.set_active_trace(t)
+            tr = new_trace("SEEK", camera=cam_name)
+            tr.mark("USER_SEEK_CLICK", target=f"{float(seconds):.2f}")
+            eng.set_active_trace(tr)
         except Exception:
             pass
-        self._show_playback_loading("در حال رفتن به زمان انتخاب‌شده…")
+        self._show_playback_loading(t("pb.loading_seek"))
         eng.request_seek(seconds)
 
     def _on_cell_state(self, idx, state):
@@ -1101,7 +1128,6 @@ class PlaybackPage(BasePage):
         if not uid or cell is None:
             return
 
-        # Calendar itself disables non-recording days; keep this guard too.
         if date_obj not in self._available_recording_dates:
             return
 
@@ -1117,12 +1143,12 @@ class PlaybackPage(BasePage):
         generation = self._scan_generation
         self._date_scan_inflight.add(key)
         self._date_loading = True
-        self.date_lbl.setText("⏳ در حال بارگذاری تاریخ ضبط…")
+        self.date_lbl.setText("⏳ " + t("pb.loading_timeline"))
         self.prev_day_btn.setEnabled(False)
         self.next_day_btn.setEnabled(False)
         self.today_btn.setEnabled(False)
         self.calendar.setEnabled(False)
-        self._show_playback_loading("در حال آماده‌سازی نوار زمان…")
+        self._show_playback_loading(t("pb.loading_timeline"))
         self.timeline.set_segments([])
         self.timeline.setEnabled(False)
 
@@ -1153,8 +1179,10 @@ class PlaybackPage(BasePage):
                   f"{len(segments)} segments")
             if segments:
                 cell.engine().set_position_hint(segments[0]["start"])
-                speed_map = {0: 1/3, 1: 0.5, 2: 0.75, 3: 1.0, 4: 2.0, 5: 4.0, 6: 8.0, 7: 16.0}
-                cell.engine().set_speed(speed_map.get(self.speed_slider.value(), 1.0))
+                speed_map = {0: 1/3, 1: 0.5, 2: 0.75, 3: 1.0, 4: 2.0,
+                             5: 4.0, 6: 8.0, 7: 16.0}
+                cell.engine().set_speed(
+                    speed_map.get(self.speed_slider.value(), 1.0))
 
         def _failed(message):
             self._scan_jobs.discard(job)
@@ -1175,7 +1203,7 @@ class PlaybackPage(BasePage):
 
     def _update_date_label(self, day):
         if day is None:
-            self.date_lbl.setText("ابتدا دوربین و سپس تاریخ ضبط را انتخاب کنید")
+            self.date_lbl.setText(t("pb.select_camera_first"))
             return
         jy, jm, jd = gregorian_to_jalali(day.year, day.month, day.day)
         self.date_lbl.setText(
@@ -1188,7 +1216,8 @@ class PlaybackPage(BasePage):
         if not dates:
             return
         current = self.calendar.selected_date()
-        candidates = [d for d in dates if (d > current if delta > 0 else d < current)]
+        candidates = [d for d in dates
+                      if (d > current if delta > 0 else d < current)]
         if not candidates:
             return
         d = candidates[0] if delta > 0 else candidates[-1]
@@ -1209,7 +1238,7 @@ class PlaybackPage(BasePage):
             return
         img = getattr(cell.video, "_image", None)
         if img is None:
-            dlg_info(self, "No frame to save.")
+            dlg_info(self, t("pb.no_frame_snapshot"))
             return
         try:
             snap_dir = Path(config.RECORDINGS_DIR) / "snapshots"
@@ -1217,9 +1246,9 @@ class PlaybackPage(BasePage):
             ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             out = snap_dir / f"snap_{ts}.jpg"
             img.save(str(out), "JPG", 92)
-            dlg_info(self, f"Saved: {out.name}", "Snapshot")
+            dlg_info(self, t("pb.saved", name=out.name), t("pb.snapshot"))
         except Exception as e:
-            dlg_warning(self, f"Snapshot failed:\n{e}")
+            dlg_warning(self, t("pb.snapshot_failed", e=str(e)))
 
     def _on_cut_clicked(self):
         eng = self._active_engine()
@@ -1232,7 +1261,7 @@ class PlaybackPage(BasePage):
             return
         self._cut_out = eng.get_position()
         if self._cut_out <= self._cut_in:
-            dlg_info(self, "پایان باید بعد از شروع باشد.")
+            dlg_info(self, t("pb.cut_invalid"))
             self._cut_out = None
             return
         self._update_range_lbl()
@@ -1253,14 +1282,14 @@ class PlaybackPage(BasePage):
     def _open_export_dialog(self):
         cell = self.grid.get_active_cell()
         if cell is None or not cell.cam_uid():
-            dlg_info(self, "ابتدا یک دوربین روی کاشی بارگذاری کنید.")
+            dlg_info(self, t("pb.load_camera_first"))
             return
         uid = cell.cam_uid()
         cam = self.cam_manager.get(uid)
         day = cell.day() or self.calendar.selected_date()
         segments = cell.segments()
         if not segments:
-            dlg_info(self, "برای این روز ضبطی وجود ندارد.")
+            dlg_info(self, t("pb.no_recording_today"))
             return
 
         eng = self._active_engine()
@@ -1311,12 +1340,6 @@ class PlaybackPage(BasePage):
 
     # ============================================================
     def shutdown(self):
-        """Stop every playback decoder before the application closes.
-
-        Playback engines are intentionally lazy, but any engine that has been
-        used owns an FFmpeg process/thread. Close them deterministically so a
-        high-resolution playback session can never keep the application alive.
-        """
         self._scan_generation += 1
         self._date_scan_inflight.clear()
         self._hide_playback_loading()
@@ -1330,8 +1353,6 @@ class PlaybackPage(BasePage):
             pass
         try:
             for job in list(self._scan_jobs):
-                # QRunnable jobs are not forcibly killed; generation invalidates
-                # their UI callbacks, while decoder shutdown remains immediate.
                 pass
             self._scan_jobs.clear()
         except Exception:
@@ -1344,13 +1365,13 @@ class PlaybackPage(BasePage):
         v.setContentsMargins(10, 10, 10, 10)
         v.setSpacing(8)
 
-        t = QLabel("قطعات کاشی فعال")
-        t.setStyleSheet(f"""
+        title = QLabel(t("pb.segments_title"))
+        title.setStyleSheet(f"""
             color: {theme.COLOR_TEXT_SECONDARY};
             font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
             padding-bottom: 4px;
         """)
-        v.addWidget(t)
+        v.addWidget(title)
 
         self._panel_cam_lbl = QLabel("—")
         self._panel_cam_lbl.setStyleSheet(f"""
@@ -1432,12 +1453,12 @@ class PlaybackPage(BasePage):
             total_dur += dur
 
         if not segments:
-            self._panel_summary.setText("بدون قطعه")
+            self._panel_summary.setText(t("pb.no_segment"))
         else:
             th = total_dur // 3600
             tm = (total_dur % 3600) // 60
             self._panel_summary.setText(
-                f"{len(segments)} قطعه • مجموع {th:02d}:{tm:02d}"
+                t("pb.segment_summary", n=len(segments), h=th, m=tm)
             )
 
     def _on_panel_segment_clicked(self, item):
@@ -1464,8 +1485,6 @@ class PlaybackPage(BasePage):
             self._update_info_panel()
 
     def on_hide(self):
-        # Invalidate callbacks from scans that were queued before leaving
-        # the page. The jobs may finish safely, but their results are stale.
         self._scan_generation += 1
         self.timeline.setEnabled(False)
         for c in self.grid.get_cells():

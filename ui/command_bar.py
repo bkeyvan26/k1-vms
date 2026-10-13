@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""K1 VMS — Command Bar (Ctrl+K)"""
+"""K1 VMS — Command Bar (Ctrl+K, i18n)"""
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLineEdit, QListWidget, QListWidgetItem, QFrame
 )
@@ -7,11 +7,12 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QKeyEvent
 from ui import theme
 from ui.icons import make_icon
+from core.i18n import t
 
 
 class CommandBar(QDialog):
     command_selected = Signal(str)
-    
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)
@@ -24,12 +25,11 @@ class CommandBar(QDialog):
                 border-radius: 10px;
             }}
         """)
-        
+
         v = QVBoxLayout(self)
         v.setContentsMargins(0, 0, 0, 0)
         v.setSpacing(0)
-        
-        # Input area
+
         wrap = QFrame()
         wrap.setFixedHeight(50)
         wrap.setStyleSheet(f"""
@@ -41,7 +41,7 @@ class CommandBar(QDialog):
         wl = QVBoxLayout(wrap)
         wl.setContentsMargins(14, 8, 14, 8)
         self.input = QLineEdit()
-        self.input.setPlaceholderText("Type a command or search…")
+        self.input.setPlaceholderText(t("cmd.placeholder"))
         self.input.setStyleSheet(f"""
             QLineEdit {{
                 background: transparent; color: {theme.COLOR_TEXT_PRIMARY};
@@ -52,7 +52,7 @@ class CommandBar(QDialog):
         self.input.returnPressed.connect(self._exec_current)
         wl.addWidget(self.input)
         v.addWidget(wrap)
-        
+
         self.list = QListWidget()
         self.list.setStyleSheet(f"""
             QListWidget {{
@@ -68,23 +68,23 @@ class CommandBar(QDialog):
         """)
         self.list.itemActivated.connect(self._exec_item)
         v.addWidget(self.list, 1)
-        
+
         self._all = [
-            ("Dashboard",         "dashboard", "home"),
-            ("Live View",         "live",      "video"),
-            ("Cameras",           "cameras",   "grid"),
-            ("Playback",          "playback",  "play-circle"),
-            ("Alarms",            "alarms",    "bell"),
-            ("AI Analytics",      "ai",        "cpu"),
-            ("Search",            "search",    "search"),
-            ("Map",               "map",       "map"),
-            ("Reports",           "reports",   "bar-chart"),
-            ("Settings",          "settings",  "sliders"),
-            ("Users",             "users",     "users"),
-            ("Exit Application",  "exit",      "log-out"),
+            (t("cmd.dashboard"), "dashboard", "home"),
+            (t("cmd.live"),      "live",      "video"),
+            (t("cmd.cameras"),   "cameras",   "grid"),
+            (t("cmd.playback"),  "playback",  "play-circle"),
+            (t("cmd.alarms"),    "alarms",    "bell"),
+            (t("cmd.ai"),        "ai",        "cpu"),
+            (t("cmd.search"),    "search",    "search"),
+            (t("cmd.map"),       "map",       "map"),
+            (t("cmd.reports"),   "reports",   "bar-chart"),
+            (t("cmd.settings"),  "settings",  "sliders"),
+            (t("cmd.users"),     "users",     "users"),
+            (t("cmd.exit"),      "exit",      "log-out"),
         ]
         self._populate(self._all)
-    
+
     def _populate(self, items):
         self.list.clear()
         for label, key, icon in items:
@@ -94,28 +94,32 @@ class CommandBar(QDialog):
             self.list.addItem(it)
         if self.list.count():
             self.list.setCurrentRow(0)
-    
+
     def _filter(self, text):
         text = text.strip().lower()
         if not text:
             self._populate(self._all); return
         self._populate([c for c in self._all if text in c[0].lower()])
-    
+
     def _exec_current(self):
         it = self.list.currentItem()
         if it: self._exec_item(it)
-    
+
     def _exec_item(self, item):
         key = item.data(Qt.UserRole)
         if key:
             self.command_selected.emit(key)
             self.accept()
-    
+
     def keyPressEvent(self, e: QKeyEvent):
         if e.key() == Qt.Key_Escape:
             self.reject(); return
         if e.key() == Qt.Key_Down:
-            self.list.setCurrentRow(min(self.list.currentRow() + 1, self.list.count() - 1)); return
+            self.list.setCurrentRow(
+                min(self.list.currentRow() + 1, self.list.count() - 1))
+            return
         if e.key() == Qt.Key_Up:
-            self.list.setCurrentRow(max(self.list.currentRow() - 1, 0)); return
+            self.list.setCurrentRow(
+                max(self.list.currentRow() - 1, 0))
+            return
         super().keyPressEvent(e)

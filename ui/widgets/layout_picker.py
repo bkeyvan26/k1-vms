@@ -22,7 +22,8 @@ class LayoutPreviewButton(QPushButton):
         self.setFixedSize(38, 30)
         self.setCursor(Qt.PointingHandCursor)
         self.setCheckable(True)
-        self.setToolTip(f"Layout: {layout_key}")
+        from core.i18n import t
+        self.setToolTip(f"{t('live.layout')}: {layout_key}")
 
     def set_selected(self, on):
         self._selected = bool(on)

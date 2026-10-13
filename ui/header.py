@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""K1 VMS — Global Header (anti-flicker stats)"""
+"""K1 VMS — Global Header (i18n + anti-flicker stats)"""
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton
 )
@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt, Signal, QTimer
 from ui import theme
 from ui.icons import make_icon
 from ui.activity_bus import ActivityBus
+from core.i18n import t, get_language
 
 
 class StatusPill(QFrame):
@@ -110,7 +111,7 @@ class HeaderActivity(QFrame):
 
     def _on_activity(self, active: bool, text: str):
         if active:
-            self.text_lbl.setText(text or "در حال انجام…")
+            self.text_lbl.setText(text or t("common.loading"))
             self.show()
             self._blink.start()
         else:
@@ -128,7 +129,6 @@ class GlobalHeader(QFrame):
         self.setFixedHeight(theme.HEADER_HEIGHT)
         self._nvr_engine = nvr_engine
 
-        # ★ cache ضد flicker
         self._cached_online = 0
         self._cached_recording = 0
         self._cached_total = 0
@@ -145,7 +145,7 @@ class GlobalHeader(QFrame):
         h.setContentsMargins(16, 0, 16, 0)
         h.setSpacing(10)
 
-        brand = QLabel("K1 VMS")
+        brand = QLabel(t("app.title"))
         brand.setStyleSheet(
             f"color: {theme.COLOR_TEXT_PRIMARY}; background: transparent; "
             f"font-size: 15px; font-weight: 800; letter-spacing: 1px;"
@@ -162,15 +162,15 @@ class GlobalHeader(QFrame):
         h.addWidget(self.online_pill)
 
         self.alarm_pill = StatusPill(
-            "bell", "0 Alarms", theme.COLOR_STATUS_OFFLINE)
+            "bell", t("header.no_alarms"), theme.COLOR_STATUS_OFFLINE)
         h.addWidget(self.alarm_pill)
 
         self.record_pill = StatusPill(
-            "play-circle", "0 Rec", theme.COLOR_STATUS_OFFLINE)
+            "play-circle", "0 REC", theme.COLOR_STATUS_OFFLINE)
         h.addWidget(self.record_pill)
 
         self.ai_pill = StatusPill(
-            "cpu", "AI Disabled", theme.COLOR_TEXT_SECONDARY)
+            "cpu", t("header.ai_disabled"), theme.COLOR_TEXT_SECONDARY)
         h.addWidget(self.ai_pill)
 
         self.activity = HeaderActivity(self)
@@ -178,7 +178,7 @@ class GlobalHeader(QFrame):
 
         h.addStretch(1)
 
-        self.search_btn = QPushButton("  Search…")
+        self.search_btn = QPushButton("  " + t("header.search"))
         self.search_btn.setIcon(
             make_icon("search", theme.COLOR_TEXT_SECONDARY, 14))
         self.search_btn.setCursor(Qt.PointingHandCursor)
@@ -202,7 +202,7 @@ class GlobalHeader(QFrame):
         self.search_btn.clicked.connect(self.search_requested.emit)
         h.addWidget(self.search_btn)
 
-        self.user_btn = QPushButton("  User")
+        self.user_btn = QPushButton("  " + t("header.user"))
         self.user_btn.setIcon(
             make_icon("users", theme.COLOR_TEXT_PRIMARY, 14))
         self.user_btn.setCursor(Qt.PointingHandCursor)
@@ -228,7 +228,6 @@ class GlobalHeader(QFrame):
         QTimer.singleShot(1500, self.refresh_stats)
 
     def refresh_stats(self):
-        """آمار پایدار از config — بدون flicker."""
         try:
             from core.camera_manager import CameraManager
             cam_manager = CameraManager()
@@ -282,53 +281,65 @@ class GlobalHeader(QFrame):
 
     def set_online(self, online, total):
         if total == 0:
-            self.online_pill.set_text("No cameras", theme.COLOR_TEXT_SECONDARY)
+            self.online_pill.set_text(
+                t("header.no_cameras"), theme.COLOR_TEXT_SECONDARY)
         elif online == total:
             self.online_pill.set_text(
-                f"{online} / {total} Online", theme.COLOR_STATUS_ONLINE)
+                t("header.online_count", online=online, total=total),
+                theme.COLOR_STATUS_ONLINE)
         elif online == 0:
             self.online_pill.set_text(
-                f"0 / {total} Offline", theme.COLOR_STATUS_ERROR)
+                t("header.offline_all", total=total),
+                theme.COLOR_STATUS_ERROR)
         else:
             self.online_pill.set_text(
-                f"{online} / {total} Online", theme.COLOR_STATUS_WARNING)
+                t("header.online_count", online=online, total=total),
+                theme.COLOR_STATUS_WARNING)
 
     def set_alarms(self, count):
         if count == 0:
-            self.alarm_pill.set_text("No Alarms", theme.COLOR_TEXT_SECONDARY)
+            self.alarm_pill.set_text(
+                t("header.no_alarms"), theme.COLOR_TEXT_SECONDARY)
         else:
             self.alarm_pill.set_text(
-                f"{count} Alarms", theme.COLOR_STATUS_ERROR)
+                t("header.alarms", n=count), theme.COLOR_STATUS_ERROR)
 
     def set_recording(self, active, total=None):
         if total is None:
             if active == 0:
-                self.record_pill.set_text("Not Recording",
-                                           theme.COLOR_TEXT_SECONDARY)
+                self.record_pill.set_text(
+                    t("header.not_recording"), theme.COLOR_TEXT_SECONDARY)
             else:
                 self.record_pill.set_text(
-                    f"{active} REC", theme.COLOR_STATUS_ONLINE)
+                    t("header.rec_count", n=active),
+                    theme.COLOR_STATUS_ONLINE)
             return
         if total == 0:
-            self.record_pill.set_text("No cameras", theme.COLOR_TEXT_SECONDARY)
+            self.record_pill.set_text(
+                t("header.no_cameras"), theme.COLOR_TEXT_SECONDARY)
         elif active == 0:
             self.record_pill.set_text(
-                f"0 / {total} REC", theme.COLOR_STATUS_ERROR)
+                t("header.rec_none", total=total),
+                theme.COLOR_STATUS_ERROR)
         elif active == total:
             self.record_pill.set_text(
-                f"{active} / {total} REC", theme.COLOR_STATUS_ONLINE)
+                t("header.rec_count_total", active=active, total=total),
+                theme.COLOR_STATUS_ONLINE)
         else:
             self.record_pill.set_text(
-                f"{active} / {total} REC", theme.COLOR_STATUS_WARNING)
+                t("header.rec_count_total", active=active, total=total),
+                theme.COLOR_STATUS_WARNING)
 
     def set_ai_status(self, status):
         mapping = {
-            "disabled":   ("AI Disabled", theme.COLOR_TEXT_SECONDARY),
-            "ready":      ("AI Ready", theme.COLOR_STATUS_ONLINE),
-            "processing": ("AI Processing", theme.COLOR_ACCENT),
-            "error":      ("AI Error", theme.COLOR_STATUS_ERROR),
+            "disabled":   (t("header.ai_disabled"),
+                           theme.COLOR_TEXT_SECONDARY),
+            "ready":      (t("header.ai_ready"), theme.COLOR_STATUS_ONLINE),
+            "processing": (t("header.ai_processing"), theme.COLOR_ACCENT),
+            "error":      (t("header.ai_error"), theme.COLOR_STATUS_ERROR),
         }
-        text, color = mapping.get(status, ("AI", theme.COLOR_TEXT_SECONDARY))
+        text, color = mapping.get(
+            status, (t("header.ai_short"), theme.COLOR_TEXT_SECONDARY))
         self.ai_pill.set_text(text, color)
 
     def set_username(self, name):

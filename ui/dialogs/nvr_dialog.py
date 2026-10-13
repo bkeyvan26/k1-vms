@@ -1,16 +1,17 @@
 # -*- coding: utf-8 -*-
-"""K1 VMS — NVR Dialog (Phase 8.1: record_folder_name field)"""
+"""K1 VMS — پنجره افزودن/ویرایش دستگاه ضبط (NVR)"""
 import re
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, QLineEdit, QSpinBox,
     QComboBox, QPushButton, QDialogButtonBox, QLabel, QGroupBox,
     QListWidget, QListWidgetItem, QProgressDialog, QMessageBox,
-    QAbstractItemView, QCheckBox
+    QAbstractItemView, QCheckBox, QFrame, QScrollArea, QWidget
 )
 from PySide6.QtCore import Qt, QThread
 
 from core.models import NVRDevice, NVRChannel
 from core.nvr_discovery import NVRDiscoveryWorker
+from ui.rtl_helper import set_no_rtl
 import config
 
 
@@ -30,13 +31,31 @@ QComboBox QAbstractItemView {{
     background: {config.COLOR_BG_CARD}; color: {config.COLOR_TEXT_PRIMARY};
     selection-background-color: {config.COLOR_ACCENT};
     border: 1px solid #2c333c; outline: none; }}
-QCheckBox {{ color: {config.COLOR_TEXT_PRIMARY}; font-size: 12px;
-             spacing: 8px; }}
+
 QGroupBox {{ color: {config.COLOR_TEXT_PRIMARY}; font-weight: bold;
-    font-size: 12px; border: 1px solid #2c333c; border-radius: 6px;
-    margin-top: 12px; padding-top: 14px; }}
-QGroupBox::title {{ subcontrol-origin: margin; left: 12px; padding: 0 6px;
+    font-size: 13px; border: 1px solid #2c333c; border-radius: 6px;
+    margin-top: 16px; padding-top: 18px; }}
+QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top right;
+    right: 16px; padding: 0 10px 0 10px;
     color: {config.COLOR_ACCENT}; }}
+
+QCheckBox {{
+    color: {config.COLOR_TEXT_PRIMARY};
+    font-size: 13px; font-weight: bold;
+    spacing: 10px; padding: 6px 4px;
+    background: transparent;
+}}
+QCheckBox::indicator {{
+    width: 20px; height: 20px;
+    border: 2px solid #6b7280; border-radius: 4px;
+    background: #0d0d0d;
+}}
+QCheckBox::indicator:hover {{ border-color: {config.COLOR_ACCENT}; }}
+QCheckBox::indicator:checked {{
+    background: {config.COLOR_ACCENT};
+    border-color: {config.COLOR_ACCENT};
+}}
+
 QListWidget {{ background: {config.COLOR_BG_CARD};
     color: {config.COLOR_TEXT_PRIMARY};
     border: 1px solid #2c333c; border-radius: 5px;
@@ -45,16 +64,26 @@ QListWidget::item {{ padding: 8px 10px; border-radius: 4px; }}
 QListWidget::item:hover {{ background: #2c333c; }}
 QListWidget::item:selected {{ background: {config.COLOR_ACCENT};
     color: white; }}
-QDialogButtonBox QPushButton {{ background: {config.COLOR_BG_CARD};
-    color: {config.COLOR_TEXT_PRIMARY}; border: 1px solid #2c333c;
-    border-radius: 5px; padding: 8px 20px; font-size: 12px;
-    font-weight: bold; min-width: 80px; }}
-QDialogButtonBox QPushButton:hover {{ background: #2c333c; }}
+
+QScrollArea {{ border: none; background: transparent; }}
+QScrollBar:vertical {{
+    background: {config.COLOR_BG_DARK};
+    width: 10px; border-radius: 5px; margin: 0;
+}}
+QScrollBar::handle:vertical {{
+    background: #3a4550; min-height: 30px; border-radius: 5px;
+}}
+QScrollBar::handle:vertical:hover {{ background: {config.COLOR_ACCENT}; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0; background: none;
+}}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+    background: none;
+}}
 """
 
 
 def _sanitize_folder_name(text: str) -> str:
-    """حذف کاراکترهای غیرمجاز — فقط A-Z a-z 0-9 _ -"""
     if not text:
         return ""
     return re.sub(r"[^a-zA-Z0-9_\-]", "", text).strip("_-")[:40]
@@ -63,134 +92,228 @@ def _sanitize_folder_name(text: str) -> str:
 class NVRDialog(QDialog):
     def __init__(self, nvr: NVRDevice = None, parent=None):
         super().__init__(parent)
+        self.setLayoutDirection(Qt.RightToLeft)
+
         self.is_new = nvr is None
         self.nvr = nvr if nvr else NVRDevice()
+        self._original_record = bool(
+            getattr(self.nvr, "record_channels", False))
 
         self._detect_thread = None
         self._detect_worker = None
         self._detect_progress = None
 
         self.setWindowTitle(
-            "➕ افزودن NVR" if self.is_new
-            else f"✏ ویرایش NVR: {self.nvr.name}"
+            "افزودن دستگاه ضبط" if self.is_new
+            else f"ویرایش دستگاه ضبط: {self.nvr.name}"
         )
-        self.resize(820, 900)
+        # ★ ارتفاع کمتر — به اندازه صفحه‌های معمولی
+        self.resize(820, 760)
+        self.setMinimumSize(700, 550)
         self.setStyleSheet(DIALOG_STYLE)
         self._build_ui()
         self._populate_channels()
 
     # ============================================================
     def _build_ui(self):
-        v = QVBoxLayout(self)
-        v.setContentsMargins(20, 20, 20, 20)
-        v.setSpacing(12)
+        # ★ ساختار کلی: scroll area بالا + دکمه‌ها پایین (ثابت)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
 
-        # ---------- Connection ----------
-        grp = QGroupBox("🔌 اتصال به NVR")
+        # ---------- Scroll area ----------
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        body = QWidget()
+        v = QVBoxLayout(body)
+        v.setContentsMargins(20, 20, 20, 20)
+        v.setSpacing(10)
+
+        # ---------- اطلاعات اتصال ----------
+        grp = QGroupBox("اطلاعات اتصال")
         form = QFormLayout(grp)
-        form.setSpacing(10)
+        form.setSpacing(8)
         form.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        form.setRowWrapPolicy(QFormLayout.DontWrapRows)
 
         self.name_edit = QLineEdit(self.nvr.name)
-        self.name_edit.setPlaceholderText("مثلاً: NVR طبقه اول")
-        form.addRow("نام NVR:", self.name_edit)
+        self.name_edit.setPlaceholderText(
+            "مثلاً: دستگاه طبقه اول")
+        form.addRow("نام دستگاه:", self.name_edit)
 
-        # ★ فیلد نام پوشه ضبط
         self.folder_edit = QLineEdit(
             getattr(self.nvr, "record_folder_name", "") or "")
         self.folder_edit.setPlaceholderText(
-            "مثلاً: negahbani یا dakheli (حروف انگلیسی، اعداد، _ و -)")
+            "مثلاً: parkings  یا negahbani")
         self.folder_edit.setMaxLength(40)
+        set_no_rtl(self.folder_edit)
         self.folder_edit.textChanged.connect(self._on_folder_changed)
-        form.addRow("نام پوشه ضبط:", self.folder_edit)
+        form.addRow("نام پوشه ذخیره:", self.folder_edit)
 
         self.folder_hint = QLabel(
-            "💡 نامی که پوشه‌ی ضبط NVR و کانال‌هایش با آن ساخته می‌شود.\n"
-            "   فقط حروف انگلیسی، اعداد، _ و - مجاز است.\n"
-            "   مثال: negahbani → continuous/negahbani/ch_01/2026-10-10/"
+            "فقط حروف انگلیسی، اعداد، _ و - مجاز است."
         )
         self.folder_hint.setWordWrap(True)
         self.folder_hint.setStyleSheet(
             f"color: {config.COLOR_TEXT_SECONDARY}; font-size: 10px; "
-            f"background: {config.COLOR_BG_CARD}; padding: 8px; "
+            f"background: {config.COLOR_BG_CARD}; padding: 6px 8px; "
             f"border-radius: 4px; border-left: 3px solid {config.COLOR_ACCENT};"
         )
         form.addRow("", self.folder_hint)
 
+        # ---------- چک‌باکس ضبط ----------
+        record_box = QFrame()
+        record_box.setStyleSheet(
+            f"QFrame {{ background: {config.COLOR_BG_CARD}; "
+            f"border: 1px solid #2c333c; border-radius: 6px; }}"
+        )
+        rb_lay = QVBoxLayout(record_box)
+        rb_lay.setContentsMargins(12, 8, 12, 8)
+        rb_lay.setSpacing(2)
+
+        self.record_channels_cb = QCheckBox(
+            "تصاویر همه‌ی دوربین‌های این دستگاه ضبط شوند؟"
+        )
+        self.record_channels_cb.setChecked(
+            bool(getattr(self.nvr, "record_channels", False))
+        )
+        self.record_channels_cb.setToolTip(
+            "✅ تیک بزنید: همه‌ی دوربین‌های این دستگاه پیوسته ضبط می‌شوند.\n"
+            "❌ تیک نزنید (پیش‌فرض): فقط پخش زنده — ضبط نمی‌شوند.\n\n"
+            "بعداً می‌توانید در تنظیمات هر دوربین، ضبط آن را جداگانه "
+            "روشن/خاموش کنید."
+        )
+        rb_lay.addWidget(self.record_channels_cb)
+
+        hint_rec = QLabel(
+            "پیش‌فرض: خاموش — بعداً برای هر دوربین جداگانه قابل تغییر است."
+        )
+        hint_rec.setWordWrap(True)
+        hint_rec.setStyleSheet(
+            f"color: {config.COLOR_TEXT_SECONDARY}; font-size: 10px; "
+            f"padding: 0 4px; background: transparent;"
+        )
+        rb_lay.addWidget(hint_rec)
+        form.addRow("ضبط تصاویر:", record_box)
+
+        # ---------- برند ----------
         self.brand_combo = QComboBox()
         for k, label in [
-            ("auto", "🔍 تشخیص خودکار"),
-            ("hikvision", "Hikvision"),
-            ("dahua", "Dahua"),
-            ("uniview", "Uniview"),
-            ("axis", "Axis"),
-            ("amcrest", "Amcrest"),
-            ("kdt", "KDT"),
+            ("auto", "تشخیص خودکار"),
+            ("hikvision", "هایک‌ویژن"),
+            ("dahua", "داهوا"),
+            ("uniview", "یونی‌ویو"),
+            ("axis", "اکسیس"),
+            ("amcrest", "آمکرست"),
+            ("kdt", "کِی‌دی‌تی"),
         ]:
             self.brand_combo.addItem(label, k)
         idx = self.brand_combo.findData(self.nvr.brand or "auto")
         if idx >= 0:
             self.brand_combo.setCurrentIndex(idx)
-        form.addRow("برند:", self.brand_combo)
+        form.addRow("برند سازنده:", self.brand_combo)
 
         self.ip_edit = QLineEdit(self.nvr.ip)
         self.ip_edit.setPlaceholderText("192.168.1.100")
+        set_no_rtl(self.ip_edit)
         form.addRow("آدرس IP:", self.ip_edit)
 
         port_row = QHBoxLayout()
+        port_row.setSpacing(6)
         self.rtsp_port_spin = QSpinBox()
         self.rtsp_port_spin.setRange(1, 65535)
         self.rtsp_port_spin.setValue(self.nvr.rtsp_port or 554)
+        set_no_rtl(self.rtsp_port_spin)
+        self.rtsp_port_spin.setFixedWidth(90)
         port_row.addWidget(QLabel("RTSP:"))
         port_row.addWidget(self.rtsp_port_spin)
         self.onvif_port_spin = QSpinBox()
         self.onvif_port_spin.setRange(1, 65535)
         self.onvif_port_spin.setValue(self.nvr.onvif_port or 80)
+        set_no_rtl(self.onvif_port_spin)
+        self.onvif_port_spin.setFixedWidth(90)
         port_row.addWidget(QLabel("ONVIF:"))
         port_row.addWidget(self.onvif_port_spin)
         port_row.addStretch(1)
-        form.addRow("پورت:", port_row)
+        form.addRow("درگاه اتصال:", port_row)
+
+        port_hint = QLabel(
+            "معمولاً نیازی به تغییر مقادیر پیش‌فرض نیست."
+        )
+        port_hint.setWordWrap(True)
+        port_hint.setStyleSheet(
+            f"color: {config.COLOR_TEXT_SECONDARY}; font-size: 10px;"
+        )
+        form.addRow("", port_hint)
 
         self.user_edit = QLineEdit(self.nvr.user)
+        set_no_rtl(self.user_edit)
         form.addRow("نام کاربری:", self.user_edit)
 
         self.pass_edit = QLineEdit(self.nvr.password)
         self.pass_edit.setEchoMode(QLineEdit.Password)
+        set_no_rtl(self.pass_edit)
         form.addRow("رمز عبور:", self.pass_edit)
 
         v.addWidget(grp)
 
-        # ---------- Manual RTSP pattern ----------
-        grp_manual = QGroupBox("🔧 الگوی RTSP دستی (برای NVRهای بدون ONVIF)")
-        mv = QFormLayout(grp_manual)
-        mv.setSpacing(8)
+        # ---------- الگوی دستی (اختیاری) ----------
+        grp_manual = QGroupBox(
+            "الگوی آدرس دستی (فقط برای دستگاه‌های قدیمی‌تر)"
+        )
+        mv = QVBoxLayout(grp_manual)
+        mv.setSpacing(6)
+        mv.setContentsMargins(14, 22, 14, 14)
+
+        hint_manual = QLabel(
+            "اگر دستگاه شما از جستجوی خودکار پشتیبانی نمی‌کند، "
+            "آدرس دقیق را اینجا وارد کنید. در غیر این‌صورت خالی بگذارید."
+        )
+        hint_manual.setWordWrap(True)
+        hint_manual.setStyleSheet(
+            f"color: {config.COLOR_TEXT_SECONDARY}; font-size: 10px; "
+            f"background: {config.COLOR_BG_CARD}; padding: 6px 8px; "
+            f"border-radius: 4px;"
+        )
+        mv.addWidget(hint_manual)
 
         self.custom_main_edit = QLineEdit()
         self.custom_main_edit.setPlaceholderText(
-            "مثال KDT: rtsp://{user}:{pwd}@{ip}:{port}/mode=real&idc={ch}&ids=1"
+            "rtsp://{user}:{pwd}@{ip}:{port}/mode=real&idc={ch}&ids=1"
         )
-        mv.addRow("Main stream:", self.custom_main_edit)
+        set_no_rtl(self.custom_main_edit)
 
         self.custom_sub_edit = QLineEdit()
         self.custom_sub_edit.setPlaceholderText(
-            "مثال: rtsp://{user}:{pwd}@{ip}:{port}/mode=real&idc={ch}&ids=2"
+            "rtsp://{user}:{pwd}@{ip}:{port}/mode=real&idc={ch}&ids=2"
         )
-        mv.addRow("Sub stream:", self.custom_sub_edit)
+        set_no_rtl(self.custom_sub_edit)
+
+        mf = QFormLayout()
+        mf.setSpacing(6)
+        mf.setLabelAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        mf.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+        mf.addRow("تصویر اصلی:", self.custom_main_edit)
+        mf.addRow("تصویر کم‌حجم:", self.custom_sub_edit)
+        mv.addLayout(mf)
 
         hint_m = QLabel(
-            "💡 <b>متغیرها:</b> {user} {pwd} {ip} {port} {ch} {stream}\n"
-            "اگر پر شود، مستقیم از این الگو استفاده می‌شود."
+            "متغیرها: {user} کاربر — {pwd} رمز — {ip} آدرس — "
+            "{port} درگاه — {ch} شماره — {stream} نوع"
         )
         hint_m.setWordWrap(True)
         hint_m.setStyleSheet(
             f"color: {config.COLOR_TEXT_SECONDARY}; font-size: 10px;"
         )
-        mv.addRow(hint_m)
+        mv.addWidget(hint_m)
         v.addWidget(grp_manual)
 
-        # ---------- Discover button ----------
-        self.discover_btn = QPushButton("🔍  تشخیص خودکار کانال‌ها")
-        self.discover_btn.setMinimumHeight(42)
+        # ---------- دکمه جستجو ----------
+        self.discover_btn = QPushButton("جستجوی خودکار دوربین‌ها")
+        self.discover_btn.setMinimumHeight(40)
         self.discover_btn.setCursor(Qt.PointingHandCursor)
         self.discover_btn.setStyleSheet(f"""
             QPushButton {{ background: {config.COLOR_ACCENT}; color: white;
@@ -202,23 +325,25 @@ class NVRDialog(QDialog):
         self.discover_btn.clicked.connect(self._on_discover)
         v.addWidget(self.discover_btn)
 
-        # ---------- Channel list ----------
-        info = QLabel("📡 کانال‌های کشف‌شده — موارد دلخواه را تیک بزنید:")
+        # ---------- لیست دوربین‌ها ----------
+        info = QLabel("دوربین‌های پیدا شده — موارد دلخواه را تیک بزنید:")
         info.setStyleSheet(
             f"color: {config.COLOR_TEXT_SECONDARY}; font-size: 11px;"
         )
         v.addWidget(info)
 
         self.channels_list = QListWidget()
+        self.channels_list.setMinimumHeight(160)
         self.channels_list.setSelectionMode(QAbstractItemView.SingleSelection)
         self.channels_list.itemChanged.connect(lambda _: self._update_count())
-        v.addWidget(self.channels_list, 1)
+        v.addWidget(self.channels_list)
 
         sel_row = QHBoxLayout()
-        sel_all = QPushButton("✔ انتخاب همه")
+        sel_row.setSpacing(6)
+        sel_all = QPushButton("انتخاب همه")
         sel_all.clicked.connect(lambda: self._set_all(True))
         sel_row.addWidget(sel_all)
-        desel_all = QPushButton("✘ حذف همه")
+        desel_all = QPushButton("حذف انتخاب همه")
         desel_all.clicked.connect(lambda: self._set_all(False))
         sel_row.addWidget(desel_all)
         sel_row.addStretch(1)
@@ -229,23 +354,45 @@ class NVRDialog(QDialog):
         sel_row.addWidget(self.count_lbl)
         v.addLayout(sel_row)
 
-        # ---------- Save ----------
+        v.addStretch(1)
+        scroll.setWidget(body)
+        outer.addWidget(scroll, 1)
+
+        # ---------- دکمه‌های ثابت پایین ----------
+        btn_container = QFrame()
+        btn_container.setStyleSheet(
+            f"QFrame {{ background: {config.COLOR_BG_DARK}; "
+            f"border-top: 1px solid #2c333c; }}"
+        )
+        btn_lay = QHBoxLayout(btn_container)
+        btn_lay.setContentsMargins(20, 10, 20, 12)
+        btn_lay.setSpacing(10)
+
         buttons = QDialogButtonBox()
-        save = buttons.addButton("💾 ذخیره", QDialogButtonBox.AcceptRole)
+        save = buttons.addButton("ذخیره", QDialogButtonBox.AcceptRole)
         save.setStyleSheet(f"""
             QPushButton {{ background: {config.COLOR_ACCENT}; color: white;
-                padding: 8px 20px; border-radius: 5px; font-weight: bold;
-                border: none; min-width: 80px; }}
+                padding: 8px 24px; border-radius: 5px; font-weight: bold;
+                border: none; min-width: 90px; font-size: 12px; }}
             QPushButton:hover {{ background: {config.COLOR_ACCENT_HOVER}; }}
         """)
-        buttons.addButton("انصراف", QDialogButtonBox.RejectRole)
+        cancel = buttons.addButton("انصراف", QDialogButtonBox.RejectRole)
+        cancel.setStyleSheet(f"""
+            QPushButton {{ background: {config.COLOR_BG_CARD};
+                color: {config.COLOR_TEXT_PRIMARY};
+                border: 1px solid #2c333c; border-radius: 5px;
+                padding: 8px 24px; font-size: 12px; font-weight: bold;
+                min-width: 90px; }}
+            QPushButton:hover {{ background: #2c333c; }}
+        """)
         buttons.accepted.connect(self._on_save)
         buttons.rejected.connect(self.reject)
-        v.addWidget(buttons)
+        btn_lay.addStretch(1)
+        btn_lay.addWidget(buttons)
+        outer.addWidget(btn_container)
 
     # ============================================================
     def _on_folder_changed(self, text):
-        """پاکسازی خودکار + نمایش پیش‌نمایش."""
         clean = _sanitize_folder_name(text)
         if clean != text:
             cur_pos = self.folder_edit.cursorPosition()
@@ -255,15 +402,13 @@ class NVRDialog(QDialog):
             self.folder_edit.blockSignals(False)
 
         if clean:
-            preview = (f"📁 پوشه: continuous/{clean}/ch_NN/2026-10-10/"
-                       f"13-14-47.ts")
+            preview = (f"مسیر ذخیره: continuous/{clean}/ch_NN/2026-10-10/"
+                       "13-14-47.ts")
         else:
-            preview = ("📁 پوشه: continuous/nvr_{{uid}}/ch_NN/2026-10-10/  "
-                       "(اگر خالی بماند، از uid خودکار استفاده می‌شود)")
+            preview = ("مسیر ذخیره: continuous/nvr_{{uid}}/ch_NN/  "
+                       "(اگر خالی بماند، خودکار ساخته می‌شود)")
         self.folder_hint.setText(
-            "💡 نامی که پوشه‌ی ضبط NVR و کانال‌هایش با آن ساخته می‌شود.\n"
-            "   فقط حروف انگلیسی، اعداد، _ و - مجاز است.\n"
-            f"   {preview}"
+            "فقط حروف انگلیسی، اعداد، _ و - مجاز است.\n" + preview
         )
 
     def _populate_channels(self):
@@ -278,8 +423,9 @@ class NVRDialog(QDialog):
         res = ch.resolution or "—"
         codec = ch.codec or "—"
         has_sub = bool(ch.rtsp_url_sub)
-        tag = " [M+S]" if has_sub else " [M]"
-        text = f"  CH {ch.channel_id:>2}   {ch.name}   —   {res}  {codec}{tag}"
+        tag = " (اصلی+فرعی)" if has_sub else " (اصلی)"
+        text = (f"  دوربین {ch.channel_id:>2}   {ch.name}   —   "
+                f"{res}  {codec}{tag}")
         item = QListWidgetItem(text)
         item.setData(Qt.UserRole, ch.to_dict())
         item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
@@ -307,7 +453,7 @@ class NVRDialog(QDialog):
         name = self.name_edit.text().strip()
         ip = self.ip_edit.text().strip()
         if not name:
-            QMessageBox.warning(self, "خطا", "نام NVR را وارد کنید.")
+            QMessageBox.warning(self, "خطا", "نام دستگاه را وارد کنید.")
             return
         if not ip:
             QMessageBox.warning(self, "خطا", "آدرس IP را وارد کنید.")
@@ -323,6 +469,7 @@ class NVRDialog(QDialog):
         self.nvr.onvif_port = self.onvif_port_spin.value()
         self.nvr.user = self.user_edit.text().strip()
         self.nvr.password = self.pass_edit.text()
+        self.nvr.record_channels = self.record_channels_cb.isChecked()
 
         selected = []
         for i in range(self.channels_list.count()):
@@ -337,13 +484,13 @@ class NVRDialog(QDialog):
         return self.nvr
 
     # ============================================================
-    # Discovery
+    # جستجوی خودکار
     # ============================================================
     def _on_discover(self):
         if self._detect_worker is not None:
             QMessageBox.information(
                 self, "در حال اجرا",
-                "تشخیص خودکار در حال اجراست."
+                "جستجوی خودکار در حال انجام است."
             )
             return
 
@@ -351,7 +498,9 @@ class NVRDialog(QDialog):
         user = self.user_edit.text().strip()
         password = self.pass_edit.text()
         if not ip or not user:
-            QMessageBox.warning(self, "خطا", "IP و نام کاربری الزامی است.")
+            QMessageBox.warning(
+                self, "خطا", "آدرس IP و نام کاربری را وارد کنید."
+            )
             return
 
         custom_main = self.custom_main_edit.text().strip()
@@ -365,8 +514,8 @@ class NVRDialog(QDialog):
         temp.onvif_port = self.onvif_port_spin.value()
         temp.brand = self.brand_combo.currentData() or "auto"
 
-        prog = QProgressDialog("در حال کشف…", "لغو", 0, 100, self)
-        prog.setWindowTitle("تشخیص خودکار NVR")
+        prog = QProgressDialog("در حال جستجو…", "لغو", 0, 100, self)
+        prog.setWindowTitle("جستجوی خودکار")
         prog.setWindowModality(Qt.WindowModal)
         prog.setMinimumDuration(0)
         prog.setAutoClose(False)
@@ -417,13 +566,14 @@ class NVRDialog(QDialog):
         self._update_count()
         n = len(payload or [])
         QMessageBox.information(
-            self, "✅ موفق",
-            f"{n} کانال کشف شد.\nموارد دلخواه را تیک بزنید و ذخیره کنید."
+            self, "موفق",
+            f"{n} دوربین پیدا شد.\n"
+            "موارد دلخواه را تیک بزنید و ذخیره کنید."
         )
 
     def _on_fail(self, msg):
         self._cleanup()
-        QMessageBox.warning(self, "❌ کشف ناموفق", str(msg))
+        QMessageBox.warning(self, "جستجو ناموفق", str(msg))
 
     def _on_cancelled(self):
         self._cleanup()
