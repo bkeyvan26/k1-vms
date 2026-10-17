@@ -1,0 +1,877 @@
+logLevel: info
+logDestinations: [stdout]
+
+rtsp: yes
+rtspAddress: :8554
+rtspTransports: [tcp]
+
+api: yes
+apiAddress: :9997
+
+paths:
+  cam_a840a3c53976:
+    source: "rtsp://admin:12345678M@192.168.1.30:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_63af29c2f79f:
+    source: "rtsp://admin:12345678M@192.168.1.31:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_a9f6dc9eee87:
+    source: "rtsp://admin:12345678M@192.168.1.32:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_7631186dafb8:
+    source: "rtsp://admin:12345678M@192.168.1.43:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_3793a3217d94:
+    source: "rtsp://admin:12345678M@192.168.1.38:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_bc96deaaace3:
+    source: "rtsp://admin:12345678M@192.168.1.37:554/media/video1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_70e21b911ce1:
+    source: "rtsp://admin:12345678M@192.168.1.33:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_0eea142cf02c:
+    source: "rtsp://admin:12345678M@192.168.1.36:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_678a1b86c204:
+    source: "rtsp://admin:12345678M@192.168.1.34:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_879113c31050:
+    source: "rtsp://admin:12345678M@192.168.1.49:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_7d0cbb4bf50c:
+    source: "rtsp://admin:12345678M@192.168.1.39:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_8b7fefbf4fc3:
+    source: "rtsp://admin:12345678M@192.168.1.48:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_366676106fbe:
+    source: "rtsp://admin:12345678M@192.168.1.46:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_5dfbd151a831:
+    source: "rtsp://admin:12345678M@192.168.1.35:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_cd162134bbaa:
+    source: "rtsp://admin:12345678M@192.168.1.54:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_88d03f7381e4:
+    source: "rtsp://admin:12345678M@192.168.1.41:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_abb60a580a88:
+    source: "rtsp://admin:12345678M@192.168.1.44:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_53fa67533e76:
+    source: "rtsp://admin:12345678M@192.168.1.42:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_d82f9a9d5568:
+    source: "rtsp://admin:12345678M@192.168.1.40:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_ec25747d50e1:
+    source: "rtsp://admin:12345678M@192.168.1.47:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_58c4cf023039:
+    source: "rtsp://admin:12345678M@192.168.1.45:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_1fb9dd3b9ff5:
+    source: "rtsp://admin:12345678M@192.168.1.72:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_bf764462911d:
+    source: "rtsp://admin:12345678M@192.168.1.77:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_65cc65967811:
+    source: "rtsp://admin:12345678M@192.168.1.95:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_68ee91acc8c4:
+    source: "rtsp://admin:12345678M@192.168.1.79:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_0ba580f6a8d9:
+    source: "rtsp://admin:12345678M@192.168.1.103:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_4a4bae757fd0:
+    source: "rtsp://admin:12345678M@192.168.1.104:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_3a5c97f4dc8e:
+    source: "rtsp://admin:12345678M@192.168.1.101:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_0a3c5c07c51c:
+    source: "rtsp://admin:12345678M@192.168.1.102:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_f20de880f1cf:
+    source: "rtsp://admin:12345678M@192.168.1.105:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_18fbb82ea737:
+    source: "rtsp://admin:12345678M@192.168.1.96:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_fc50f132d83f:
+    source: "rtsp://admin:12345678M@192.168.1.106:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_6e703583452d:
+    source: "rtsp://admin:12345678M@192.168.1.117:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_c747a307aee1:
+    source: "rtsp://admin:12345678M@192.168.1.125:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_83434b48b1af:
+    source: "rtsp://admin:12345678M@192.168.1.221:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_073d2a013021:
+    source: "rtsp://admin:12345678M@192.168.1.245:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_ec367c4a81bd:
+    source: "rtsp://admin:12345678M@@192.168.1.62:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_7d9164876f1c:
+    source: "rtsp://admin:12345678M@@192.168.1.53:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_06cbd2f9092d:
+    source: "rtsp://admin:12345678M@@192.168.1.59:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_d62f2828d1d5:
+    source: "rtsp://admin:12345678M@@192.168.1.51:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_08cfa1003240:
+    source: "rtsp://admin:12345678M@@192.168.1.56:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_1f775dcc0884:
+    source: "rtsp://admin:12345678M@@192.168.1.60:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_c0a7403279b9:
+    source: "rtsp://admin:12345678M@@192.168.1.58:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_fdf829b40ecf:
+    source: "rtsp://admin:12345678M@@192.168.1.61:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_7310ef344b8d:
+    source: "rtsp://admin:12345678M@@192.168.1.63:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_1c3ee49c659f:
+    source: "rtsp://admin:12345678M@@192.168.1.67:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_5cc0247b7c1c:
+    source: "rtsp://admin:12345678M@@192.168.1.52:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_eba4ef378d52:
+    source: "rtsp://admin:12345678M@@192.168.1.50:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_32213b1d98dd:
+    source: "rtsp://admin:12345678M@@192.168.1.66:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_57ec7c73a2f6:
+    source: "rtsp://admin:12345678M@@192.168.1.64:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_701c970543eb:
+    source: "rtsp://admin:12345678M@@192.168.1.73:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_564065153676:
+    source: "rtsp://admin:12345678M@@192.168.1.70:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_5fb35ed44879:
+    source: "rtsp://admin:12345678M@@192.168.1.85:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_e81a2a76efdd:
+    source: "rtsp://admin:12345678M@@192.168.1.71:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_1dd9df753917:
+    source: "rtsp://admin:12345678M@@192.168.1.78:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_048f2fb6f8f5:
+    source: "rtsp://admin:12345678M@@192.168.1.68:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_9ae58fb5cf37:
+    source: "rtsp://admin:12345678M@@192.168.1.65:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_fdd4ab90effa:
+    source: "rtsp://admin:12345678M@@192.168.1.76:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_ddd596d88d5c:
+    source: "rtsp://admin:12345678M@@192.168.1.74:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_2020cd18eed6:
+    source: "rtsp://admin:12345678M@@192.168.1.107:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_ee9990e125f0:
+    source: "rtsp://admin:12345678M@@192.168.1.111:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_bd44f4fa122c:
+    source: "rtsp://admin:12345678M@@192.168.1.109:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_08bbd0264e50:
+    source: "rtsp://admin:12345678M@@192.168.1.112:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_6556d83a593a:
+    source: "rtsp://admin:12345678M@@192.168.1.118:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_31e2532145c4:
+    source: "rtsp://admin:12345678M@@192.168.1.94:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_d8a6d3aea07b:
+    source: "rtsp://admin:12345678M@@192.168.1.113:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_c08788bda046:
+    source: "rtsp://admin:12345678M@@192.168.1.86:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_4932a1cd5ec9:
+    source: "rtsp://admin:12345678M@@192.168.1.83:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_dc5dd1eb0815:
+    source: "rtsp://admin:12345678M@@192.168.1.92:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_7ec3751ad77d:
+    source: "rtsp://admin:12345678M@@192.168.1.90:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_ee569e840938:
+    source: "rtsp://admin:12345678M@@192.168.1.88:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_c4cb1df829e7:
+    source: "rtsp://admin:12345678M@@192.168.1.81:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_8abca74e826a:
+    source: "rtsp://admin:12345678M@@192.168.1.91:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_46feb27a2f4e:
+    source: "rtsp://admin:12345678M@@192.168.1.93:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_015f2a7e5fa5:
+    source: "rtsp://admin:12345678M@@192.168.1.84:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_7fdcd2521701:
+    source: "rtsp://admin:12345678M@@192.168.1.89:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_75fcbff5c1e6:
+    source: "rtsp://admin:12345678M@@192.168.1.161:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_aeeb11c8474d:
+    source: "rtsp://admin:12345678M@@192.168.1.87:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_d4b9ba3f4050:
+    source: "rtsp://admin:12345678M@@192.168.1.167:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_3441d8fb17c3:
+    source: "rtsp://admin:12345678M@@192.168.1.164:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_9429c8f46818:
+    source: "rtsp://admin:12345678M@@192.168.1.110:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_95d109a6c366:
+    source: "rtsp://admin:12345678M@172.20.34.244:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_e5bf1e8e066b:
+    source: "rtsp://admin:12345678M@172.20.34.242:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  cam_2eb7899cb207:
+    source: "rtsp://admin:12345678M@172.20.34.243:554/Streaming/Channels/101"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_01:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=1&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_01_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=1&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_02:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=2&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_02_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=2&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_03:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=3&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_03_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=3&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_04:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=4&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_04_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=4&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_05:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=5&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_05_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=5&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_06:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=6&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_06_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=6&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_07:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=7&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_07_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=7&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_08:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=8&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_08_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=8&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_09:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=9&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_09_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=9&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_10:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=10&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_10_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=10&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_11:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=11&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_11_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=11&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_12:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=12&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_12_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=12&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_13:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=13&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_13_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=13&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_14:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=14&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_14_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=14&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_15:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=15&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_15_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=15&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_16:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=16&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_16_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=16&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_17:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=17&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_17_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=17&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_18:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=18&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_18_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=18&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_19:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=19&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_19_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=19&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_20:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=20&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_20_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=20&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_21:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=21&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_21_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=21&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_22:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=22&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_22_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=22&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_23:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=23&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_23_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=23&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_24:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=24&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_24_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=24&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_25:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=25&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_25_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=25&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_26:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=26&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_26_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=26&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_27:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=27&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_27_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=27&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_28:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=28&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_28_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=28&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_29:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=29&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_29_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=29&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_30:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=30&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_30_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=30&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_31:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=31&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_31_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=31&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  Khadamat-Shahr/ch_32:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=32&ids=1"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  Khadamat-Shahr/ch_32_sub:
+    source: "rtsp://admin:123456@192.168.226.10:554/mode=real&idc=32&ids=2"
+    rtspTransport: tcp
+    sourceOnDemand: no
+
+  OUT:
+    source: "rtsp://admin:12345678M%40@172.20.34.112:554/axis-media/media.amp"
+    rtspTransport: tcp
+    sourceOnDemand: no
+    record: no
+
+  OUT_sub:
+    source: "rtsp://admin:12345678M%40@172.20.34.112:554/axis-media/media.amp?videocodec=h264&resolution=640x480"
+    rtspTransport: tcp
+    sourceOnDemand: no
